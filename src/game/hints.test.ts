@@ -74,7 +74,8 @@ test("escalation strictly widens what is revealed", () => {
 
 test("on a stranded branch, staged help points to undo rather than a hole", () => {
   const level = getLevel("forked-needle-05")!;
-  const stranded = play(level, ["a", "b", "d", "e"]);
+  const stranded = play(level, ["a", "b", "d", "e", "f", "g", "h"]);
+  assert.equal(stranded.complete, false);
   const s2 = stagedHint(level, stranded, 2);
   const s3 = stagedHint(level, stranded, 3);
   assert.deepEqual(s2.regionHoles, []);

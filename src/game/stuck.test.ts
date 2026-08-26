@@ -46,16 +46,17 @@ test("the completing stitch never transiently reports stuck", () => {
 });
 
 test("forked-needle can strand the thread on the tempting branch", () => {
-  // Front a-b, then the back branch b-d instead of b-c leaves c unreachable.
+  // Front a-b, then the back branch b-d instead of closing the b-c loop first:
+  // the runaway run d-e-f-g-h ends stranded at h with c left behind.
   const level = getLevel("forked-needle-05")!;
-  const stranded = play(level, ["a", "b", "d", "e"]);
+  const stranded = play(level, ["a", "b", "d", "e", "f", "g", "h"]);
   assert.equal(stranded.complete, false);
-  assert.equal(isGameStuck(level, stranded), true, "b->d branch should strand the thread");
+  assert.equal(isGameStuck(level, stranded), true, "b->d run should strand the thread");
 });
 
 test("undo recovers from a trapped thread", () => {
   const level = getLevel("forked-needle-05")!;
-  const stranded = play(level, ["a", "b", "d", "e"]);
+  const stranded = play(level, ["a", "b", "d", "e", "f", "g", "h"]);
   assert.equal(isGameStuck(level, stranded), true);
   const recovered = undoMove(level, stranded);
   assert.equal(isGameStuck(level, recovered), false, "undo must free the needle");
@@ -63,7 +64,7 @@ test("undo recovers from a trapped thread", () => {
 
 test("restart (a fresh game) recovers from a trapped thread", () => {
   const level = getLevel("forked-needle-05")!;
-  const stranded = play(level, ["a", "b", "d", "e"]);
+  const stranded = play(level, ["a", "b", "d", "e", "f", "g", "h"]);
   assert.equal(isGameStuck(level, stranded), true);
   const restarted = createGame(level);
   assert.equal(isGameStuck(level, restarted), false, "restart must free the needle");

@@ -46,8 +46,10 @@ test("wrong starting holes fail authored-solution validation", () => {
 
 test("wrong side alternation points to the exact stitch", () => {
   const level = copyLevel({
+    holes: ["a", "b", "c", "d", "e", "f"].map((id, index) => ({ id, x: 10 + index * 10, y: 50 })),
     frontEdges: [{ from: "a", to: "b" }, { from: "b", to: "c" }, { from: "e", to: "f" }],
-    backEdges: [{ from: "c", to: "d" }, { from: "d", to: "e" }]
+    backEdges: [{ from: "c", to: "d" }, { from: "d", to: "e" }],
+    authoredSolution: ["a", "b", "c", "d", "e", "f"]
   });
   const result = validateLevel(level);
   assert.ok(result.issues.some((issue) => issue.code === "WRONG_SIDE_OR_EDGE" && issue.message.includes("Stitch 2")));
@@ -60,9 +62,10 @@ test("incomplete authored solutions report missing stitches and edges", () => {
 });
 
 test("an impossible level is reported as unsolvable", () => {
+  // A back edge to a leaf hole that can never be covered by any alternating trail.
   const level = copyLevel({
     holes: [...levels[0].holes, { id: "z", x: 50, y: 90 }],
-    frontEdges: [...levels[0].frontEdges, { from: "z", to: "f" }],
+    backEdges: [...levels[0].backEdges, { from: "z", to: "b" }],
     expectedSolutionCount: 1,
     authoredSolution: [...levels[0].authoredSolution, "z"]
   });
@@ -72,7 +75,7 @@ test("an impossible level is reported as unsolvable", () => {
 
 test("the solver counts multiple valid trails", () => {
   const level = levels.find((candidate) => candidate.id === "orbit-bloom-07")!;
-  assert.equal(solveLevel(level).solutionCount, 6);
+  assert.equal(solveLevel(level).solutionCount, 2);
   assert.equal(validateLevel(level).valid, true);
 });
 

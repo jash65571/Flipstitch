@@ -6,23 +6,22 @@ FlipStitch is a calm mobile puzzle game for Android and iOS. A player completes 
 
 ## Current milestone
 
-The stabilization and Android device-proof milestone is complete on `main`. It hardens the playtest and feel work from Milestone 3:
+The puzzle-depth milestone (Prompt 6) is complete on `main`. It turns the ten-level Day & Night collection into a measured, strictly-rising difficulty curve:
 
-- Attempt identity on every level event: restarts, replays, exits, and completions are distinct and reported per attempt, with legacy Milestone 3 events flagged honestly.
-- Stable playtest lifecycle: exactly one open and one terminal event per attempt, safe under route replacement, Android back, backgrounding, and StrictMode-style remounts.
-- Hardened storage: all pending events drain in order, background flushes, clear-during-write is safe, 5,000-event bound kept.
-- Hardened audio: every delayed sound tracked and cleared, promise-safe native calls, no overlap on rapid taps.
-- Accessible destructive confirms: WCAG-AA armed contrast, timer cleanup, no double execution.
-- Repeatable builds: `eas.json` with an internal Android APK profile and a production AAB profile (`npm run build:android:internal` / `build:android:production`).
+- A pure, deterministic analyzer (`src/game/analyzer.ts`) measures every level: real decisions, branching, forced-move share, reachable traps, dangerous decisions, and planning depth.
+- A transparent 0–100 difficulty score (planning + risk + capped length) replaces vibes with numbers — a 20-stitch forced path can never outscore a short branching trap puzzle. `scripts/analyze-levels.mjs` prints the whole matrix.
+- The ten levels were re-authored into a monotonic curve (15 → 22 → 28 → 31 → 39 → 54 → 60 → 64 → 77 → 80): tutorials keep one safe choice, levels 7–8 are now genuinely trap-capable, and level 10 stays the strongest capstone.
+- Regression tests (`src/game/difficulty.test.ts`) fail if the curve ever drops, a trap level stops trapping, or a safe level starts stranding.
+- New authoring reference (`docs/LEVEL-DESIGN-GUIDE.md`) and honest research record (`docs/RESEARCH-MILESTONE-6.md`); the measured matrix lives in `docs/DIFFICULTY-MATRIX.md`.
 
-Milestone 3 (feel and playtest proof) also lives on `main`: original synthesized sound effects, controlled haptics through one feedback controller, a Settings screen, and local-only playtest instrumentation with a bounded store and a pure report engine — no accounts, no ads, no network, no external analytics.
+Earlier milestones also live on `main`: the Living Sampler design overhaul (Prompt 5, now the visual source of truth — see `docs/DESIGN-BIBLE.md`), the stabilization and Android device-proof pass (Milestone 4), and the feel/playtest work (Milestone 3: original synthesized sounds, controlled haptics, a Settings screen, and local-only playtest instrumentation — no accounts, no ads, no network, no external analytics).
 
-The complete ten-level collection from the earlier milestone remains:
+The complete ten-level collection remains:
 
 - Tap a valid hole to place one stitch.
 - The active side changes after every stitch.
 - Preview the reverse without moving the needle.
-- Undo freely or ask for a hint.
+- Undo freely or ask a staged hint (concept → region → exact).
 - Finish every marked stitch on both sides.
 - Choose from ten validated handcrafted hoops.
 - Unlock, replay, and resume levels with local progress.
@@ -49,7 +48,7 @@ npm run validate:audio
 npm run scan:analytics
 ```
 
-`npm run check` runs tests, TypeScript, Expo Doctor, audio validation, and the analytics scan in sequence. Android, iOS, and web bundles export in CI on every push to `main`. Bricolage Grotesque and Manrope are bundled for offline use, and all sound effects are original and generated in-repo (see `assets/sounds/README.md`).
+`npm run check` runs tests, TypeScript, Expo Doctor, audio validation, and the analytics scan in sequence. Android, iOS, and web bundles export in CI on every push to `main`. Fraunces and Atkinson Hyperlegible Next are bundled for offline use, and all sound effects are original and generated in-repo (see `assets/sounds/README.md`).
 
 ## Product rules
 
@@ -60,6 +59,6 @@ npm run scan:analytics
 - Playtest data stays local, bounded, viewable, and clearable from Settings.
 - Monetization comes after retention testing, never before the core is proven.
 
-See [docs/PRODUCT.md](docs/PRODUCT.md) for the product plan, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical choices, [docs/RESEARCH-MILESTONE-4.md](docs/RESEARCH-MILESTONE-4.md) for stabilization research, and [docs/MILESTONE-4-QA.md](docs/MILESTONE-4-QA.md) for this milestone's QA evidence.
+See [docs/PRODUCT.md](docs/PRODUCT.md) for the product plan, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical choices, [docs/DESIGN-BIBLE.md](docs/DESIGN-BIBLE.md) for the Living Sampler design system, [docs/LEVEL-DESIGN-GUIDE.md](docs/LEVEL-DESIGN-GUIDE.md) for how levels are authored, and [docs/DIFFICULTY-MATRIX.md](docs/DIFFICULTY-MATRIX.md) for the measured curve. Milestone-specific research and QA: [docs/RESEARCH-MILESTONE-6.md](docs/RESEARCH-MILESTONE-6.md) and [docs/MILESTONE-6-QA.md](docs/MILESTONE-6-QA.md) (puzzle depth), [docs/RESEARCH-MILESTONE-5.md](docs/RESEARCH-MILESTONE-5.md) and [docs/MILESTONE-5-QA.md](docs/MILESTONE-5-QA.md) (design overhaul), and [docs/RESEARCH-MILESTONE-4.md](docs/RESEARCH-MILESTONE-4.md) with [docs/MILESTONE-4-QA.md](docs/MILESTONE-4-QA.md) (stabilization).
 
 Earlier research and test matrices: [docs/RESEARCH-MILESTONE-3.md](docs/RESEARCH-MILESTONE-3.md), [docs/MILESTONE-3-QA.md](docs/MILESTONE-3-QA.md), [docs/UI_RESEARCH.md](docs/UI_RESEARCH.md), [docs/RESEARCH-MILESTONE-2.md](docs/RESEARCH-MILESTONE-2.md), [docs/VERTICAL_SLICE_QA.md](docs/VERTICAL_SLICE_QA.md), and [docs/MILESTONE-2-QA.md](docs/MILESTONE-2-QA.md). Real-device instructions for the Samsung Galaxy S25 Ultra (including the EAS internal-APK handoff) are in [docs/S25-ULTRA-PLAYTEST.md](docs/S25-ULTRA-PLAYTEST.md).

@@ -16,11 +16,14 @@ test("a stitch moves the needle and forces the opposite side", () => {
 });
 
 test("a hole without a target stitch is rejected", () => {
-  const initial = createGame(levelOne);
-  const result = playMove(levelOne, initial, "c");
+  const moved = playMove(levelOne, createGame(levelOne), "b");
+  assert.equal(moved.ok, true);
+  if (!moved.ok) return;
 
+  // From b on the back, no back stitch reaches c, so it must be rejected.
+  const result = playMove(levelOne, moved.state, "c");
   assert.equal(result.ok, false);
-  assert.equal(result.state, initial);
+  assert.equal(result.state, moved.state);
 });
 
 test("undo restores the prior side, hole, and thread", () => {
@@ -92,7 +95,8 @@ test("a hint exposes one legal choice and never advances the needle", () => {
   const hint = nextHint(levelOne, state);
 
   assert.equal(hint, "b");
-  assert.deepEqual(availableNodes(levelOne, state), ["b"]);
+  // Level 1 offers a safe tutorial choice: both rays are legal first stitches.
+  assert.deepEqual(availableNodes(levelOne, state), ["b", "c"]);
   assert.equal(state.currentHole, levelOne.startHole);
   assert.equal(state.activeSide, levelOne.startSide);
   assert.equal(state.moves.length, 0);
@@ -102,13 +106,16 @@ test("undo walks back a multi-stitch path exactly", () => {
   const first = playMove(levelOne, createGame(levelOne), "b");
   assert.equal(first.ok, true);
   if (!first.ok) return;
-  const second = playMove(levelOne, first.state, "c");
+  const second = playMove(levelOne, first.state, "a");
   assert.equal(second.ok, true);
   if (!second.ok) return;
+  const third = playMove(levelOne, second.state, "c");
+  assert.equal(third.ok, true);
+  if (!third.ok) return;
 
-  const restored = undoMove(levelOne, second.state);
-  assert.equal(restored.activeSide, first.state.activeSide);
-  assert.equal(restored.currentHole, first.state.currentHole);
-  assert.deepEqual(restored.moves, first.state.moves);
-  assert.deepEqual(restored.usedEdges, first.state.usedEdges);
+  const restored = undoMove(levelOne, third.state);
+  assert.equal(restored.activeSide, second.state.activeSide);
+  assert.equal(restored.currentHole, second.state.currentHole);
+  assert.deepEqual(restored.moves, second.state.moves);
+  assert.deepEqual(restored.usedEdges, second.state.usedEdges);
 });

@@ -22,12 +22,12 @@ We start with one polished level, not a large menu. It must prove five things:
 
 ## Visual direction
 
-- Warm linen background with a large wood hoop.
-- Coral thread on the front and iris thread on the back.
-- Soft black text, restrained gold and teal accents.
-- Large touch targets around small visual holes.
-- Bricolage Grotesque for the level title and completion reveal.
-- Manrope for controls, state, progress, and instructions.
+The **Living Sampler** is the visual source of truth (see `docs/DESIGN-BIBLE.md`; the Prompt 5 overhaul made it current). In brief:
+
+- Warm paper and dyed fabric grounds, a large wood hoop with brass fittings.
+- Brick-vermilion thread on the front and deep-indigo thread on the back, distinguished by shape and written labels, never by hue alone.
+- Fraunces for titles and the completion reveal; Atkinson Hyperlegible Next for controls, state, and instructions.
+- Large touch targets around small visual holes; restrained brass/ochre and sage accents.
 - Both font families are bundled for offline use under the SIL Open Font License.
 
 The puzzle takes most of the screen. The only play controls are Undo, Preview, and Hint. Reduced motion replaces the flip with an instant side swap.
@@ -109,13 +109,13 @@ These are early decision gates. Launch targets will be set after real test data 
 
 The first collection is ten handcrafted Day & Night hoops. It grows one reasoning skill at a time:
 
-1. First Thread and Kite Tail teach the forced side change from both starting sides.
-2. Twin Petals and Butterfly Turn show that some choices are equally safe.
-3. Forked Needle and Echo Stairs introduce branches that reward Undo and planning.
-4. Orbit Bloom and Laced Window use shared holes and alternating loops.
-5. Moonlit Return and Master Sampler require closing short returns before moving onward.
+1. First Thread and Kite Tail teach the flip from both starting sides — each with one safe, visible choice so the tutorial is never autoplay.
+2. Twin Petals and Butterfly Turn show that some choices are equally safe, and introduce shared holes (figure-8 center, hub).
+3. Forked Needle and Echo Stairs introduce branches that reward Undo and planning — the first genuine traps.
+4. Orbit Bloom and Laced Window use shared holes, alternating loops, and runners that never return — genuinely trap-capable planning levels.
+5. Moonlit Return and Master Sampler require closing short returns before moving onward, ending in a dense multi-loop capstone.
 
-Difficulty comes from path planning. It never comes from timers, lives, hidden rules, or smaller touch targets. The collection gallery shows a mini hoop, a written difficulty, clear lock state, best completion, and one direct Continue action.
+The curve is measured and strictly rising (see `docs/DIFFICULTY-MATRIX.md`); the analyzer in `src/game/analyzer.ts` and the regression tests in `src/game/difficulty.test.ts` keep it that way. Difficulty comes from path planning. It never comes from timers, lives, hidden rules, or smaller touch targets. The collection gallery shows a mini hoop, a written difficulty, clear lock state, best completion, and one direct Continue action.
 
 ## Non-negotiable rules
 
