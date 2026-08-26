@@ -27,38 +27,50 @@ committed as binaries. Deep-linking dynamic routes (`/level/[id]`) via a plain
 static server 404s, so gameplay was reached by clicking through the hydrated
 gallery, as a real user would.
 
+To reach gameplay states reliably (the layout re-centres between captures, so
+pixel-hunting missed), holes were clicked by their **accessibility label**
+("Hole X, valid stitch") via `find` — which also demonstrates the a11y tree is
+correct. Level 1 (a forced 5-stitch path) was played end-to-end.
+
 Captured and verified rendering:
 
-1. **Gallery (sampler journey)** — custom Wordmark (stitch mark + two-tone
-   "FlipStitch"), `CHAPTER ONE` eyebrow, `Day & Night` in Fraunces, the
+1. **Gallery (sampler journey, in progress)** — custom Wordmark (stitch mark +
+   two-tone "FlipStitch"), `CHAPTER ONE` eyebrow, `Day & Night` in Fraunces, the
    continuous thread rail connecting stops, per-level stitched vignettes, the
-   current stop ("First Thread") in focus with a `✎ Begin` tag, and locked stops
-   rendered as folded/dashed pattern pieces with the folded-corner + locked
-   node mark. Woven progress row (0/10). Settings is the secondary spool icon.
-2. **Gameplay — front** — the header no longer repeats the side (the old
+   current stop in focus with a `✎ Begin` tag, and locked stops rendered as
+   folded/dashed pattern pieces with the folded-corner + locked node mark. Woven
+   progress row. Settings is the secondary spool icon.
+2. **Gallery (completed state)** — all ten stops show the finished cross-stitch
+   node, full-colour vignettes, and the **fully-travelled sage thread rail**;
+   progress row all filled (10/10).
+3. **Gameplay — front** — the header no longer repeats the side (the old
    `STITCH ON FRONT` badge is gone); side identity is the vermilion **solid**
    inner rim + the single `FRONT` woven label. Brass needle with red thread
    tail; custom Undo/Preview/Hint tool marks; guidance-full glow on level 1.
-3. **Invalid move** — clicking a wrong hole shows "That line is not available on
+4. **Gameplay — back side after a flip** — after one stitch the hoop rim turns
+   **indigo and dashed** (shape differs from the front's solid vermilion), the
+   single label reads `BACK`, Undo enables, and the message is "Back side.
+   Choose the next glowing hole." Confirms front/back is never colour-only.
+5. **Invalid move** — clicking a wrong hole shows "That line is not available on
    this side." with the shake/haptic path.
-4. **Settings (workbox)** — `Make it yours` in Fraunces; sewing-icon section
+6. **Completion reveal** — finishing level 1 renders the crafted card: the
+   finished-sampler vignette with a **brass seal**, "Thread complete" in
+   Fraunces, "Your first sunrise is stitched.", and Again / Gallery / Next — no
+   confetti, no coins.
+7. **Settings (workbox)** — `Make it yours` in Fraunces; sewing-icon section
    headers (Feel/Motion/Playtest/Progress/About); teal switches; danger-bordered
    confirm buttons. The **Reduced motion** row correctly read "on — flips swap
-   instantly" because the test environment had reduce-motion enabled, exercising
-   the reduced-motion branch.
+   instantly" because the preview environment had reduce-motion enabled,
+   exercising the reduced-motion branch.
 
-Verified by tests + SSR rather than pixel-captured (static-server routing +
-animation-driven capture timeouts made these flaky to screenshot cleanly):
+Verified by tests, not pixel-captured (the only unshot state):
 
-- **Gameplay — back side after a flip:** the flip commit, side swap, and dashed
-  back-rim identity are covered by `engine.test.ts` / `content-flow.test.ts`;
-  the back-side render path is the same component branch as the (captured) front.
 - **Trapped-thread state:** logic proven by `stuck.test.ts` (strand on
   forked-needle `a,b,d,e`; undo/restart recovery; never on completion). The UI
-  is an `accessibilityRole="alert"` card with Undo + Restart.
-- **Completion reveal:** the finished front+back sampler + brass seal renders
-  from the same `LevelThumbnail` proven in the gallery; reduced-motion shows it
-  without animation.
+  is an `accessibilityRole="alert"` card with Undo + Restart. It was not
+  screenshotted because Forked Needle is Level 5, gated behind levels 1–4 (which
+  provably cannot trap), so reaching it live is disproportionate; captured
+  states 4 and 6 above exercise the same footer/card rendering machinery.
 
 ## Responsive / large-text
 
