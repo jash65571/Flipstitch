@@ -6,7 +6,7 @@
  * AsyncStorage store. Nothing here performs network requests.
  */
 
-import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
 
 import type { PlaytestEvent } from "@/playtest/events";
 import { PlaytestEventStore } from "@/playtest/store";
@@ -20,58 +20,40 @@ type PlaytestContextValue = {
   /** Snapshot of stored events (flushes pending writes first). */
   loadEvents: () => Promise<PlaytestEvent[]>;
   clearEvents: () => Promise<void>;
-  /** Bounded event count for the Settings screen. */
-  eventCount: number | null;
 };
 
 const PlaytestContext = createContext<PlaytestContextValue | null>(null);
 
 export function PlaytestProvider({ children }: { children: ReactNode }) {
-  const [eventCount, setEventCount] = useState<number | null>(null);
   const trackerRef = useRef<PlaytestTracker | null>(null);
   if (trackerRef.current === null) {
     trackerRef.current = new PlaytestTracker(new PlaytestEventStore());
   }
 
   useEffect(() => {
-    const tracker = trackerRef.current;
-    if (!tracker) return;
-    // Guarded at module scope so React remounts in development cannot create
-    // duplicate "app session started" events for one app launch.
-    tracker.startSession();
-    void tracker.snapshot().then((events) => setEventCount(events.length));
+    // startSession is idempotent per tracker (deduplicated by trackOnce), so
+    // React StrictMode double-mounts in development cannot record two
+    // "app session started" events for one app launch.
+    trackerRef.current?.startSession();
   }, []);
 
+  // The value object is created exactly once. Recreating it on state changes
+  // would give screens a new reference on every render and re-trigger effects
+  // that depend on the playtest context. Event counts are derived on demand
+  // through loadEvents() instead of being pushed through context.
   const value = useMemo<PlaytestContextValue>(() => {
     const tracker = trackerRef.current;
     if (!tracker) {
       throw new Error("PlaytestTracker is unavailable.");
     }
     return {
-      track: (input) => {
-        tracker.track(input);
-        setEventCount((current) => (current === null ? current : current + 1));
-      },
-      trackOnce: (input) => {
-        const recorded = tracker.trackOnce(input);
-        if (recorded) {
-          setEventCount((current) => (current === null ? current : current + 1));
-        }
-        return recorded;
-      },
+      track: (input) => tracker.track(input),
+      trackOnce: (input) => tracker.trackOnce(input),
       sessionId: tracker.getSessionId(),
-      loadEvents: async () => {
-        const events = await tracker.snapshot();
-        setEventCount(events.length);
-        return events;
-      },
-      clearEvents: async () => {
-        await tracker.clear();
-        setEventCount(0);
-      },
-      eventCount
+      loadEvents: () => tracker.snapshot(),
+      clearEvents: () => tracker.clear()
     };
-  }, [eventCount]);
+  }, []);
 
   return <PlaytestContext.Provider value={value}>{children}</PlaytestContext.Provider>;
 }

@@ -58,8 +58,9 @@ export class PlaytestTracker {
     return this.sessionId;
   }
 
+  /** Idempotent: records at most one session start per tracker. */
   startSession(): void {
-    this.track({ name: "app_session_started" });
+    this.trackOnce({ name: "app_session_started" });
   }
 
   track(input: TrackInput): void {
