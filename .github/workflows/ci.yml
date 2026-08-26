@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Test puzzle rules
+      - name: Test puzzle rules and feedback/playtest units
         run: npm test
 
       - name: Check TypeScript
@@ -33,6 +34,12 @@ jobs:
 
       - name: Check Expo project health
         run: npm run doctor
+
+      - name: Validate audio assets
+        run: npm run validate:audio
+
+      - name: Scan for network analytics SDKs
+        run: npm run scan:analytics
 
       - name: Bundle Android
         run: EXPO_NO_TELEMETRY=1 npm run export:android
