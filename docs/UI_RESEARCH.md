@@ -31,4 +31,34 @@ No competitor art, copy, layout, or brand element was reproduced.
 
 ## Font licensing
 
-Bricolage Grotesque and Manrope are distributed under the SIL Open Font License 1.1. The full notices are stored in `assets/licenses/` and ship with the source.
+As of Milestone 5, FlipStitch ships **Fraunces** (editorial display) and
+**Atkinson Hyperlegible Next** (UI/body), replacing Bricolage Grotesque and
+Manrope. Both are distributed under the SIL Open Font License 1.1; the full
+notices are stored in `assets/licenses/` and ship with the source. Package,
+weight, size, cross-platform, and web-bundle verification is recorded in
+`RESEARCH-MILESTONE-5.md`.
+
+---
+
+## Milestone 5 — The Living Sampler (visual identity + UX rebuild)
+
+Full research, the 12-reference log, font verification, accessibility findings,
+and device risks live in [`RESEARCH-MILESTONE-5.md`](./RESEARCH-MILESTONE-5.md).
+The resulting system is codified in [`DESIGN-BIBLE.md`](./DESIGN-BIBLE.md); the
+first difficulty pass is in [`DIFFICULTY-MATRIX.md`](./DIFFICULTY-MATRIX.md).
+
+Headline conclusions carried into implementation:
+
+- **Front/back as the object** (Art of Fauna, ADA 2025) — legitimises FlipStitch's
+  two-sided hoop and "accessibility is a solving path" stance.
+- **Reward is the artifact** (Rytmos, ADA 2024) — completion shows a finished
+  sampler + seal, never confetti or coins.
+- **Wordless teaching** (The Witness) + **"three reads"** (Zach Gage) — drive the
+  guidance ramp (full → reduced → minimal) and the staged hint (concept → region
+  → exact).
+- **Invest in identity; techniques over trends** (Railbound) — reject
+  glassmorphism/neon; commit to code-native SVG craft.
+- **Character distinction** (Atkinson Hyperlegible Next) — chosen for dense UI
+  legibility.
+
+No competitor art, copy, layout, colour, or interaction was reproduced.
