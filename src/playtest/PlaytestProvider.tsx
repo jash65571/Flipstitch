@@ -7,6 +7,7 @@
  */
 
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef } from "react";
+import { AppState } from "react-native";
 
 import type { PlaytestEvent } from "@/playtest/events";
 import { PlaytestEventStore } from "@/playtest/store";
@@ -35,6 +36,18 @@ export function PlaytestProvider({ children }: { children: ReactNode }) {
     // React StrictMode double-mounts in development cannot record two
     // "app session started" events for one app launch.
     trackerRef.current?.startSession();
+
+    // Flush buffered events when the app backgrounds so playtest data survives
+    // a suspension or kill, and flush once more on provider teardown.
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") {
+        void trackerRef.current?.flush();
+      }
+    });
+    return () => {
+      subscription.remove();
+      void trackerRef.current?.flush();
+    };
   }, []);
 
   // The value object is created exactly once. Recreating it on state changes

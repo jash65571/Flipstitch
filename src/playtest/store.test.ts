@@ -130,4 +130,65 @@ test("the AsyncStorage adapter uses the playtest storage key", () => {
   assert.equal(PLAYTEST_STORAGE_KEY, "flipstitch.playtest.v1");
 });
 
+test("flush drains more than one batch and preserves append order", async () => {
+  const { storage } = makeFakeStorage();
+  const store = new PlaytestEventStore(storage, 0, 25);
+  for (let i = 1; i <= 250; i++) {
+    store.append(makeEvent({ seq: i, timestamp: 1_700_000_000_000 + i }));
+  }
+  const snapshot = await store.snapshot();
+  assert.equal(snapshot.length, 250, "every pending event is flushed, not just one batch");
+  assert.deepEqual(snapshot.map((e) => e.seq).slice(0, 3), [1, 2, 3], "order is preserved across batches");
+  assert.equal(snapshot.at(-1)?.seq, 250);
+});
+
+test("a background flush persists all pending events immediately", async () => {
+  const { storage, stored } = makeFakeStorage();
+  const store = new PlaytestEventStore(storage, 60_000, 10); // debounce never fires naturally
+  for (let i = 1; i <= 35; i++) store.append(makeEvent({ seq: i }));
+  await store.flush(); // AppState background handler
+  const persisted = readEvents(stored());
+  assert.equal(persisted.length, 35);
+  assert.equal(persisted[0].seq, 1);
+  assert.equal(persisted.at(-1)?.seq, 35);
+});
+
+test("clear during pending writes empties storage without resurrecting old data", async () => {
+  const { storage } = makeFakeStorage();
+  const store = new PlaytestEventStore(storage, 0, 10);
+  for (let i = 1; i <= 30; i++) store.append(makeEvent({ seq: i }));
+  const flushing = store.flush(); // some batches already queued
+  const clearing = store.clear(); // cancels pending + invalidates queued writes
+  await flushing;
+  await clearing;
+  assert.deepEqual(await store.snapshot(), [], "storage is empty after clear");
+
+  // Post-clear appends survive.
+  store.append(makeEvent({ seq: 31 }));
+  await store.flush();
+  const snapshot = await store.snapshot();
+  assert.equal(snapshot.length, 1);
+  assert.equal(snapshot[0].seq, 31);
+});
+
+test("appends arriving during an in-flight flush are included in order", async () => {
+  const { storage } = makeFakeStorage();
+  const store = new PlaytestEventStore(storage, 0, 10);
+  for (let i = 1; i <= 10; i++) store.append(makeEvent({ seq: i }));
+  const flushing = store.flush();
+  for (let i = 11; i <= 20; i++) store.append(makeEvent({ seq: i })); // arrive mid-flush
+  await flushing;
+  await store.flush();
+  const snapshot = await store.snapshot();
+  assert.deepEqual(snapshot.map((e) => e.seq), Array.from({ length: 20 }, (_, i) => i + 1));
+});
+
+test("legacy version-one events without attempt ids remain readable", async () => {
+  const legacy = makeEvent({ seq: 1, name: "level_opened", levelId: "l1" });
+  assert.equal(isValidPlaytestEvent(legacy), true);
+  const stored = readEvents(JSON.stringify([legacy]));
+  assert.equal(stored.length, 1);
+  assert.equal(stored[0].attemptId, undefined);
+});
+
 
