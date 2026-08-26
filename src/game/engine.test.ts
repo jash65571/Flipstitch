@@ -10,7 +10,7 @@ test("a stitch moves the needle and forces the opposite side", () => {
 
   assert.equal(result.ok, true);
   if (!result.ok) return;
-  assert.equal(result.state.currentNode, "b");
+  assert.equal(result.state.currentHole, "b");
   assert.equal(result.state.activeSide, "back");
   assert.equal(result.state.moves.length, 1);
 });
@@ -30,7 +30,7 @@ test("undo restores the prior side, hole, and thread", () => {
 
   const restored = undoMove(levelOne, first.state);
   assert.equal(restored.activeSide, "front");
-  assert.equal(restored.currentNode, "a");
+  assert.equal(restored.currentHole, "a");
   assert.equal(restored.moves.length, 0);
   assert.equal(progress(levelOne, restored), 0);
 });
@@ -38,7 +38,7 @@ test("undo restores the prior side, hole, and thread", () => {
 test("the complete alternating path solves both sides", () => {
   let state = createGame(levelOne);
 
-  for (const target of levelOne.solution.slice(1)) {
+  for (const target of levelOne.authoredSolution.slice(1)) {
     const result = playMove(levelOne, state, target);
     assert.equal(result.ok, true);
     if (!result.ok) return;
@@ -58,7 +58,7 @@ test("the hint follows the authored solution", () => {
 
 test("every invalid move leaves the full state untouched", () => {
   const initial = createGame(levelOne);
-  const sameHole = playMove(levelOne, initial, initial.currentNode);
+  const sameHole = playMove(levelOne, initial, initial.currentHole);
   const wrongLine = playMove(levelOne, initial, "i");
 
   assert.equal(sameHole.ok, false);
@@ -70,7 +70,7 @@ test("every invalid move leaves the full state untouched", () => {
 });
 
 test("a used stitch and a completed game reject moves without mutation", () => {
-  const firstEdge = levelOne.edges[0];
+  const firstEdge = { ...levelOne.frontEdges[0], side: "front" as const };
   const usedState = {
     ...createGame(levelOne),
     usedEdges: new Set([edgeKey(firstEdge)])
@@ -93,7 +93,7 @@ test("a hint exposes one legal choice and never advances the needle", () => {
 
   assert.equal(hint, "b");
   assert.deepEqual(availableNodes(levelOne, state), ["b"]);
-  assert.equal(state.currentNode, levelOne.startNode);
+  assert.equal(state.currentHole, levelOne.startHole);
   assert.equal(state.activeSide, levelOne.startSide);
   assert.equal(state.moves.length, 0);
 });
@@ -108,7 +108,7 @@ test("undo walks back a multi-stitch path exactly", () => {
 
   const restored = undoMove(levelOne, second.state);
   assert.equal(restored.activeSide, first.state.activeSide);
-  assert.equal(restored.currentNode, first.state.currentNode);
+  assert.equal(restored.currentHole, first.state.currentHole);
   assert.deepEqual(restored.moves, first.state.moves);
   assert.deepEqual(restored.usedEdges, first.state.usedEdges);
 });

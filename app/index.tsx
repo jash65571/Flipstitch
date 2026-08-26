@@ -1,5 +1,5 @@
-import { GameScreen } from "@/screens/GameScreen";
+import { LevelSelectScreen } from "@/screens/LevelSelectScreen";
 
 export default function HomeScreen() {
-  return <GameScreen />;
+  return <LevelSelectScreen />;
 }

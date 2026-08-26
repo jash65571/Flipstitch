@@ -9,13 +9,16 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { AccessibilityInfo } from "react-native";
 
 import { colors } from "@/theme/tokens";
+import { ProgressProvider } from "@/progress/ProgressProvider";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [fontsLoaded, fontError] = useFonts({
     BricolageGrotesque_700Bold,
     BricolageGrotesque_800ExtraBold,
@@ -30,6 +33,12 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
     if (fontsLoaded || fontError) {
       void SplashScreen.hideAsync();
     }
@@ -40,9 +49,9 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <ProgressProvider>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.linen } }} />
-    </>
+      <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "fade", contentStyle: { backgroundColor: colors.linen } }} />
+    </ProgressProvider>
   );
 }

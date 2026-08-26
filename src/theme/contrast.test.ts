@@ -24,7 +24,10 @@ test("all text color pairs clear the WCAG AA normal-text threshold", () => {
     [colors.white, colors.coralDeep],
     [colors.white, colors.irisDeep],
     [colors.ink, colors.gold],
-    [colors.white, colors.ink]
+    [colors.white, colors.ink],
+    [colors.tealDeep, colors.linen],
+    [colors.tealDeep, colors.cloth],
+    [colors.linenShadow, colors.ink]
   ];
 
   for (const [foreground, background] of pairs) {

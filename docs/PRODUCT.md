@@ -74,6 +74,18 @@ The prototype gate is behavioral, not opinion-based:
 
 These are early decision gates. Launch targets will be set after real test data exists.
 
+## Content proof collection
+
+The first collection is ten handcrafted Day & Night hoops. It grows one reasoning skill at a time:
+
+1. First Thread and Kite Tail teach the forced side change from both starting sides.
+2. Twin Petals and Butterfly Turn show that some choices are equally safe.
+3. Forked Needle and Echo Stairs introduce branches that reward Undo and planning.
+4. Orbit Bloom and Laced Window use shared holes and alternating loops.
+5. Moonlit Return and Master Sampler require closing short returns before moving onward.
+
+Difficulty comes from path planning. It never comes from timers, lives, hidden rules, or smaller touch targets. The collection gallery shows a mini hoop, a written difficulty, clear lock state, best completion, and one direct Continue action.
+
 ## Non-negotiable rules
 
 - No limited lives.

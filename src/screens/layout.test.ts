@@ -36,3 +36,20 @@ test("tablet landscape uses a capped two-column board", () => {
   assert.equal(layout.horizontal, true);
   assert.equal(layout.boardSize, 500);
 });
+
+test("requested portrait device matrix keeps the hoop within safe horizontal space", () => {
+  const devices = [
+    { name: "small Android", width: 360, height: 640 },
+    { name: "large Android", width: 412, height: 915 },
+    { name: "iPhone portrait", width: 390, height: 844 },
+    { name: "tablet portrait", width: 820, height: 1180 }
+  ];
+
+  for (const device of devices) {
+    const layout = getGameLayout(device.width, device.height, 1);
+    assert.equal(layout.phoneLandscape, false, device.name);
+    assert.equal(layout.horizontal, false, device.name);
+    assert.ok(layout.boardSize <= device.width - layout.pagePadding * 2, device.name);
+    assert.ok(layout.boardSize >= 260, device.name);
+  }
+});

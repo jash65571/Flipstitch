@@ -14,12 +14,23 @@ import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { HoopBoard } from "@/components/HoopBoard";
 import { createGame, nextHint, oppositeSide, playMove, progress, undoMove } from "@/game/engine";
-import { levelOne } from "@/game/level-one";
-import type { GameState, Side } from "@/game/types";
+import { targetEdges } from "@/game/solver";
+import type { GameState, Level, Side } from "@/game/types";
 import { getGameLayout } from "@/screens/layout";
 import { colors, radius, space, type } from "@/theme/tokens";
 
 type ToolName = "undo" | "preview" | "hint";
+
+type GameScreenProps = {
+  level: Level;
+  levelNumber: number;
+  hasPrevious: boolean;
+  hasNext: boolean;
+  onExit: () => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  onComplete: (moves: number) => void;
+};
 
 type ToolButtonProps = {
   tool: ToolName;
@@ -80,14 +91,24 @@ function ToolButton({ tool, label, disabled, active, onPress }: ToolButtonProps)
   );
 }
 
-export function GameScreen() {
+export function GameScreen({
+  level,
+  levelNumber,
+  hasPrevious,
+  hasNext,
+  onExit,
+  onPrevious,
+  onNext,
+  onComplete
+}: GameScreenProps) {
   const { width, height, fontScale } = useWindowDimensions();
   const { boardSize, compact, horizontal, pagePadding, phoneLandscape } = getGameLayout(width, height, fontScale);
 
-  const [game, setGame] = useState<GameState>(() => createGame(levelOne));
+  const [game, setGame] = useState<GameState>(() => createGame(level));
   const [previewSide, setPreviewSide] = useState<Side | null>(null);
   const [hintNode, setHintNode] = useState<string | null>(null);
-  const [message, setMessage] = useState("Tap the coral glow. Every stitch flips the hoop.");
+  const [placedStitchCount, setPlacedStitchCount] = useState(0);
+  const [message, setMessage] = useState(level.hintText ?? "Choose a glowing hole. Every stitch flips the hoop.");
   const [reduceMotion, setReduceMotion] = useState(false);
   const [animating, setAnimating] = useState(false);
   const inputLocked = useRef(false);
@@ -95,10 +116,12 @@ export function GameScreen() {
   const settleScale = useRef(new Animated.Value(1)).current;
   const shakeX = useRef(new Animated.Value(0)).current;
   const progressValue = useRef(new Animated.Value(0)).current;
+  const completionScale = useRef(new Animated.Value(0.96)).current;
+  const completionOpacity = useRef(new Animated.Value(0)).current;
   const visibleSide = previewSide ?? game.activeSide;
   const completedCount = game.usedEdges.size;
-  const totalCount = levelOne.edges.length;
-  const percent = Math.round(progress(levelOne, game) * 100);
+  const totalCount = targetEdges(level).length;
+  const percent = Math.round(progress(level, game) * 100);
   const sideColor = visibleSide === "front" ? colors.coral : colors.iris;
   const sideSoft = visibleSide === "front" ? colors.coralSoft : colors.irisSoft;
 
@@ -115,6 +138,38 @@ export function GameScreen() {
       useNativeDriver: false
     }).start();
   }, [percent, progressValue, reduceMotion]);
+
+  useEffect(() => {
+    setGame(createGame(level));
+    setPreviewSide(null);
+    setHintNode(null);
+    setPlacedStitchCount(0);
+    setMessage(level.hintText ?? "Choose a glowing hole. Every stitch flips the hoop.");
+    progressValue.setValue(0);
+  }, [level, progressValue]);
+
+  useEffect(() => {
+    if (!game.complete) {
+      completionOpacity.setValue(0);
+      completionScale.setValue(0.96);
+      return;
+    }
+    if (reduceMotion) {
+      completionOpacity.setValue(1);
+      completionScale.setValue(1);
+      return;
+    }
+    Animated.parallel([
+      Animated.timing(completionOpacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.spring(completionScale, {
+        toValue: 1,
+        damping: 16,
+        stiffness: 220,
+        mass: 0.7,
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [completionOpacity, completionScale, game.complete, reduceMotion]);
 
   const progressWidth = progressValue.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] });
 
@@ -178,7 +233,7 @@ export function GameScreen() {
   function handleNodePress(nodeId: string) {
     if (inputLocked.current || previewSide || game.complete) return;
     setHintNode(null);
-    const result = playMove(levelOne, game, nodeId);
+    const result = playMove(level, game, nodeId);
     if (!result.ok) {
       say(result.reason === "same-hole" ? "The needle is already here." : "That line is not available on this side.");
       showInvalidFeedback();
@@ -196,7 +251,10 @@ export function GameScreen() {
       );
     });
 
+    setPlacedStitchCount((count) => count + 1);
+
     if (result.completedNow) {
+      onComplete(placedStitchCount + 1);
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } else {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -206,7 +264,7 @@ export function GameScreen() {
   function handleUndo() {
     if (game.moves.length === 0 || inputLocked.current) return;
     animateSwap(() => {
-      setGame(undoMove(levelOne, game));
+      setGame(undoMove(level, game));
       setPreviewSide(null);
       setHintNode(null);
       say("Stitch removed. The needle and side are restored.");
@@ -224,19 +282,20 @@ export function GameScreen() {
 
   function handleHint() {
     if (inputLocked.current) return;
-    const hint = nextHint(levelOne, game);
+    const hint = nextHint(level, game);
     setPreviewSide(null);
     setHintNode(hint);
-    say(hint ? `Hole ${hint.toUpperCase()} is a valid next stitch.` : "This hoop is complete.");
+    say(hint ? `Hole ${hint.toUpperCase()} keeps a full solution open.` : "This path is blocked. Undo the last stitch and try another branch.");
     void Haptics.selectionAsync().catch(() => undefined);
   }
 
   function handleRestart() {
-    setGame(createGame(levelOne));
+    setGame(createGame(level));
     setPreviewSide(null);
     setHintNode(null);
+    setPlacedStitchCount(0);
     progressValue.setValue(0);
-    say("Fresh thread. Tap the coral glow to begin.");
+    say(level.hintText ?? "Fresh thread. Choose a glowing hole to begin.");
   }
 
   if (phoneLandscape) {
@@ -255,13 +314,24 @@ export function GameScreen() {
 
   const header = (
     <>
+      <View style={styles.navRow}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Back to level gallery" onPress={onExit} style={({ pressed }) => [styles.navButton, pressed && styles.navPressed]}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.navButtonText}>‹ Gallery</Text>
+        </Pressable>
+        <Text maxFontSizeMultiplier={1.5} style={styles.levelMeta}>LEVEL {levelNumber} · {level.difficulty.toUpperCase()}</Text>
+        {hasPrevious ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={`Play previous level ${levelNumber - 1}`} onPress={onPrevious} style={({ pressed }) => [styles.navButton, pressed && styles.navPressed]}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.navButtonText}>Previous</Text>
+          </Pressable>
+        ) : <View style={styles.navPlaceholder} />}
+      </View>
       <View style={styles.header}>
         <View style={styles.titleBlock}>
           <Text maxFontSizeMultiplier={1.6} style={styles.collection}>
-            {levelOne.collection}
+            {level.collection}
           </Text>
           <Text maxFontSizeMultiplier={1.6} style={[styles.title, compact && styles.titleCompact]}>
-            {levelOne.title}
+            {level.title}
           </Text>
         </View>
         <View style={[styles.sideBadge, { backgroundColor: sideSoft, borderColor: sideColor }]}>
@@ -298,29 +368,41 @@ export function GameScreen() {
   const footer = (
     <View style={[styles.footer, horizontal && styles.footerWide]}>
       {game.complete ? (
-        <View accessible accessibilityRole="summary" style={styles.completionCard}>
-          <View style={styles.completionSeal}>
-            <Text maxFontSizeMultiplier={1.4} style={styles.completionMark}>✓</Text>
+        <Animated.View accessible accessibilityRole="summary" style={[styles.completionCard, { opacity: completionOpacity, transform: [{ scale: completionScale }] }]}>
+          <View style={styles.completionTop}>
+            <View style={styles.completionSeal}>
+              <Text maxFontSizeMultiplier={1.4} style={styles.completionMark}>✓</Text>
+            </View>
+            <View style={styles.completionCopy}>
+              <Text maxFontSizeMultiplier={1.6} style={styles.completionTitle}>Thread complete</Text>
+              <Text maxFontSizeMultiplier={1.8} style={styles.completionText}>{level.completionMessage}</Text>
+            </View>
           </View>
-          <View style={styles.completionCopy}>
-            <Text maxFontSizeMultiplier={1.6} style={styles.completionTitle}>Thread complete</Text>
-            <Text maxFontSizeMultiplier={1.8} style={styles.completionText}>Two patterns, joined by one path.</Text>
+          <View style={styles.completionActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Play level again" onPress={handleRestart} style={({ pressed }) => [styles.secondaryButton, pressed && styles.replayPressed]}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.secondaryButtonText}>Again</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Return to level gallery" onPress={onExit} style={({ pressed }) => [styles.secondaryButton, pressed && styles.replayPressed]}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.secondaryButtonText}>Gallery</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={hasNext ? `Play next level ${levelNumber + 1}` : "Return to completed collection"} onPress={hasNext ? onNext : onExit} style={({ pressed }) => [styles.nextButton, pressed && styles.replayPressed]}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.nextButtonText}>{hasNext ? "Next" : "Collection"}</Text>
+            </Pressable>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Play level again" onPress={handleRestart} style={({ pressed }) => [styles.replayButton, pressed && styles.replayPressed]}>
-            <Text maxFontSizeMultiplier={1.5} style={styles.replayText}>Again</Text>
-          </Pressable>
-        </View>
+        </Animated.View>
       ) : (
         <View accessibilityLiveRegion="polite" style={styles.messageBox}>
           <Text maxFontSizeMultiplier={2} style={styles.message}>{message}</Text>
         </View>
       )}
 
-      <View style={styles.toolbar}>
-        <ToolButton tool="undo" label="Undo" disabled={game.moves.length === 0 || animating} onPress={handleUndo} />
-        <ToolButton tool="preview" label={previewSide ? "Return" : "Preview"} disabled={animating} active={previewSide !== null} onPress={handlePreview} />
-        <ToolButton tool="hint" label="Hint" disabled={game.complete || animating} onPress={handleHint} />
-      </View>
+      {!game.complete ? (
+        <View style={styles.toolbar}>
+          <ToolButton tool="undo" label="Undo" disabled={game.moves.length === 0 || animating} onPress={handleUndo} />
+          <ToolButton tool="preview" label={previewSide ? "Return" : "Preview"} disabled={animating} active={previewSide !== null} onPress={handlePreview} />
+          <ToolButton tool="hint" label="Hint" disabled={animating} onPress={handleHint} />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -341,7 +423,7 @@ export function GameScreen() {
               }}
             >
               <HoopBoard
-                level={levelOne}
+                level={level}
                 game={game}
                 visibleSide={visibleSide}
                 size={boardSize}
@@ -382,6 +464,41 @@ const styles = StyleSheet.create({
   },
   playAreaWide: {
     minWidth: 520
+  },
+  navRow: {
+    minHeight: 48,
+    marginBottom: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  navButton: {
+    minWidth: 72,
+    minHeight: 48,
+    paddingHorizontal: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius.pill
+  },
+  navPressed: {
+    backgroundColor: colors.linenDeep
+  },
+  navButtonText: {
+    color: colors.inkSoft,
+    fontFamily: type.bodyBold,
+    fontSize: 11
+  },
+  navPlaceholder: {
+    width: 72,
+    minHeight: 48
+  },
+  levelMeta: {
+    flex: 1,
+    color: colors.tealDeep,
+    fontFamily: type.bodyBold,
+    fontSize: 9,
+    letterSpacing: 1,
+    textAlign: "center"
   },
   header: {
     flexDirection: "row",
@@ -507,15 +624,17 @@ const styles = StyleSheet.create({
     textAlign: "center"
   },
   completionCard: {
-    minHeight: 76,
+    minHeight: 126,
     paddingHorizontal: 13,
     paddingVertical: 10,
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: "#FFF7DF",
     borderWidth: 1,
     borderColor: "#E5C97A",
     borderRadius: radius.md
+  },
+  completionTop: {
+    flexDirection: "row",
+    alignItems: "center"
   },
   completionSeal: {
     width: 42,
@@ -546,9 +665,27 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 15
   },
-  replayButton: {
-    minWidth: 58,
+  completionActions: {
+    marginTop: 9,
+    flexDirection: "row",
+    gap: 8
+  },
+  secondaryButton: {
+    minWidth: 48,
     minHeight: 48,
+    flex: 1,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.linenShadow,
+    borderRadius: radius.pill
+  },
+  nextButton: {
+    minWidth: 68,
+    minHeight: 48,
+    flex: 1.25,
     paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
@@ -559,7 +696,12 @@ const styles = StyleSheet.create({
     opacity: 0.78,
     transform: [{ scale: 0.97 }]
   },
-  replayText: {
+  secondaryButtonText: {
+    color: colors.ink,
+    fontFamily: type.bodyBold,
+    fontSize: 11
+  },
+  nextButtonText: {
     color: colors.white,
     fontFamily: type.bodyBold,
     fontSize: 12

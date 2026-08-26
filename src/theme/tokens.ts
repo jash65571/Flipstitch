@@ -12,6 +12,7 @@ export const colors = {
   gold: "#F4B942",
   goldDeep: "#B97818",
   teal: "#2F9C95",
+  tealDeep: "#1F6F6B",
   iris: "#5968E8",
   irisSoft: "#DDE1FB",
   irisDeep: "#3543B5",

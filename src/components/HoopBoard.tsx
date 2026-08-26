@@ -15,7 +15,8 @@ import Svg, {
 } from "react-native-svg";
 
 import { availableNodes, edgeKey } from "@/game/engine";
-import type { GameState, Level, Side, StitchNode } from "@/game/types";
+import { targetEdges } from "@/game/solver";
+import type { GameState, Level, Side, StitchHole } from "@/game/types";
 import { colors, radius, type } from "@/theme/tokens";
 
 type HoopBoardProps = {
@@ -29,7 +30,7 @@ type HoopBoardProps = {
   onNodePress: (nodeId: string) => void;
 };
 
-function pointFor(node: StitchNode, side: Side, size: number) {
+function pointFor(node: StitchHole, side: Side, size: number) {
   const inset = size * 0.105;
   const inner = size - inset * 2;
   const x = side === "front" ? node.x : 100 - node.x;
@@ -49,12 +50,12 @@ function HoopBoardView({
   interactionDisabled = false,
   onNodePress
 }: HoopBoardProps) {
-  const nodeById = useMemo(() => new Map(level.nodes.map((node) => [node.id, node])), [level.nodes]);
+  const nodeById = useMemo(() => new Map(level.holes.map((hole) => [hole.id, hole])), [level.holes]);
   const validTargets = useMemo(() => new Set(availableNodes(level, game)), [game, level]);
   const threadColor = visibleSide === "front" ? colors.coral : colors.iris;
   const threadDeep = visibleSide === "front" ? colors.coralDeep : colors.irisDeep;
   const softColor = visibleSide === "front" ? colors.coralSoft : colors.irisSoft;
-  const currentPoint = pointFor(nodeById.get(game.currentNode)!, visibleSide, size);
+  const currentPoint = pointFor(nodeById.get(game.currentHole)!, visibleSide, size);
   const showNeedle = !previewing && visibleSide === game.activeSide;
 
   return (
@@ -114,7 +115,7 @@ function HoopBoardView({
         <Rect x={size * 0.455} y={0} width={size * 0.09} height={size * 0.065} rx={size * 0.016} fill="url(#metal)" />
         <Line x1={size * 0.475} y1={size * 0.022} x2={size * 0.525} y2={size * 0.022} stroke={colors.woodDark} strokeWidth={2} />
 
-        {level.edges
+        {targetEdges(level)
           .filter((edge) => edge.side === visibleSide)
           .map((edge) => {
             const from = pointFor(nodeById.get(edge.from)!, visibleSide, size);
@@ -170,12 +171,12 @@ function HoopBoardView({
             );
           })}
 
-        {level.nodes.map((node) => {
-          const point = pointFor(node, visibleSide, size);
-          const current = showNeedle && node.id === game.currentNode;
-          const target = !previewing && visibleSide === game.activeSide && validTargets.has(node.id);
+        {level.holes.map((hole) => {
+          const point = pointFor(hole, visibleSide, size);
+          const current = showNeedle && hole.id === game.currentHole;
+          const target = !previewing && visibleSide === game.activeSide && validTargets.has(hole.id);
           return (
-            <G key={node.id}>
+            <G key={hole.id}>
               {target ? <Circle cx={point.x} cy={point.y} r={size * 0.033} fill={softColor} opacity={0.9} /> : null}
               <Circle cx={point.x + 0.8} cy={point.y + 1.5} r={size * 0.018} fill={colors.linenShadow} opacity={0.75} />
               <Circle
@@ -230,22 +231,22 @@ function HoopBoardView({
         ) : null}
       </Svg>
 
-      {level.nodes.map((node) => {
-        const point = pointFor(node, visibleSide, size);
-        const isHint = !previewing && hintNode === node.id && visibleSide === game.activeSide;
-        const isCurrent = !previewing && node.id === game.currentNode && visibleSide === game.activeSide;
-        const isValid = !previewing && visibleSide === game.activeSide && validTargets.has(node.id);
+      {level.holes.map((hole) => {
+        const point = pointFor(hole, visibleSide, size);
+        const isHint = !previewing && hintNode === hole.id && visibleSide === game.activeSide;
+        const isCurrent = !previewing && hole.id === game.currentHole && visibleSide === game.activeSide;
+        const isValid = !previewing && visibleSide === game.activeSide && validTargets.has(hole.id);
         const stateLabel = isCurrent ? "needle position" : isValid ? "valid stitch" : "not available";
         return (
           <Pressable
-            key={node.id}
+            key={hole.id}
             accessibilityRole="button"
-            accessibilityLabel={`Hole ${node.id.toUpperCase()}, ${stateLabel}`}
+            accessibilityLabel={`Hole ${hole.id.toUpperCase()}, ${stateLabel}`}
             accessibilityHint={isValid ? "Places one stitch and flips the hoop" : undefined}
             accessibilityState={{ disabled: interactionDisabled }}
             disabled={interactionDisabled}
             hitSlop={4}
-            onPress={() => onNodePress(node.id)}
+            onPress={() => onNodePress(hole.id)}
             style={({ pressed }) => [
               styles.nodeTarget,
               {

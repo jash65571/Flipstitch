@@ -15,6 +15,7 @@ app/                  Routes and screen entry points
 src/screens/          Screen composition and input flow
 src/components/       Renderers and reusable controls
 src/game/             Pure rules, level data, solver-ready types
+src/progress/         Versioned local progress model and storage boundary
 src/theme/            Color, spacing, radius, and type tokens
 ```
 
@@ -28,6 +29,18 @@ A level is an alternating-edge trail across one set of physical holes. Each requ
 4. Moves play to the opposite side.
 
 That model gives us deterministic validation, hints, undo, replay, and future procedural generation.
+
+## Solver and validation
+
+`src/game/solver.ts` performs depth-first enumeration over unused, side-labeled edges. Solver state contains only the current hole, active side, used edge keys, and path. It has no React Native, Expo, SVG, or storage imports.
+
+Validation rejects missing holes, self-loops, same-side duplicate edges, wrong solution starts, broken side alternation, edge reuse, incomplete authored paths, unsolvable graphs, and unexpected solution counts. Levels marked unique must produce exactly one full trail. Levels that teach recovery declare whether dead-end branches are intended, so accidental traps fail authoring checks while planned backtracking remains measurable.
+
+## Local progression
+
+`src/progress/model.ts` is a pure, versioned progress reducer. It stores completed level IDs, best move counts, and the last played level. `ProgressProvider` is the only Async Storage boundary. Corrupt or stale data falls back to a fresh state, and storage failure never blocks offline play.
+
+Unlocking is linear and derived from contiguous completed levels. A completion unlocks the next hoop, every prior hoop remains replayable, and the gallery resumes at the last useful unlocked level.
 
 ## Planned engineering gates
 
