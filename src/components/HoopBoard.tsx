@@ -1,9 +1,22 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Circle, Defs, Line, Pattern, Rect } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  Ellipse,
+  G,
+  Line,
+  LinearGradient,
+  Path,
+  Pattern,
+  RadialGradient,
+  Rect,
+  Stop
+} from "react-native-svg";
 
-import { edgeKey } from "@/game/engine";
-import type { GameState, Level, Side, StitchNode } from "@/game/types";
+import { availableNodes, edgeKey } from "@/game/engine";
+import { targetEdges } from "@/game/solver";
+import type { GameState, Level, Side, StitchHole } from "@/game/types";
 import { colors, radius, type } from "@/theme/tokens";
 
 type HoopBoardProps = {
@@ -13,11 +26,12 @@ type HoopBoardProps = {
   size: number;
   hintNode: string | null;
   previewing: boolean;
+  interactionDisabled?: boolean;
   onNodePress: (nodeId: string) => void;
 };
 
-function pointFor(node: StitchNode, side: Side, size: number) {
-  const inset = size * 0.09;
+function pointFor(node: StitchHole, side: Side, size: number) {
+  const inset = size * 0.105;
   const inner = size - inset * 2;
   const x = side === "front" ? node.x : 100 - node.x;
   return {
@@ -33,99 +47,228 @@ function HoopBoardView({
   size,
   hintNode,
   previewing,
+  interactionDisabled = false,
   onNodePress
 }: HoopBoardProps) {
-  const nodeById = new Map(level.nodes.map((node) => [node.id, node]));
+  const nodeById = useMemo(() => new Map(level.holes.map((hole) => [hole.id, hole])), [level.holes]);
+  const validTargets = useMemo(() => new Set(availableNodes(level, game)), [game, level]);
   const threadColor = visibleSide === "front" ? colors.coral : colors.iris;
+  const threadDeep = visibleSide === "front" ? colors.coralDeep : colors.irisDeep;
   const softColor = visibleSide === "front" ? colors.coralSoft : colors.irisSoft;
+  const currentPoint = pointFor(nodeById.get(game.currentHole)!, visibleSide, size);
+  const showNeedle = !previewing && visibleSide === game.activeSide;
 
   return (
     <View
-      accessibilityLabel={`${visibleSide} side of the embroidery hoop`}
-      style={[styles.frame, { width: size, height: size, borderRadius: size / 2 }]}
+      accessible={false}
+      style={[
+        styles.frame,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          shadowColor: threadDeep
+        }
+      ]}
     >
-      <Svg width={size} height={size} pointerEvents="none">
+      <Svg width={size} height={size} pointerEvents="none" accessibilityElementsHidden>
         <Defs>
-          <Pattern id="weave" width="7" height="7" patternUnits="userSpaceOnUse">
-            <Rect width="7" height="7" fill={colors.cloth} />
-            <Line x1="0" y1="1" x2="7" y2="1" stroke={colors.linenDeep} strokeWidth="0.55" opacity="0.55" />
-            <Line x1="1" y1="0" x2="1" y2="7" stroke={colors.linenDeep} strokeWidth="0.45" opacity="0.38" />
+          <Pattern id="weave" width="8" height="8" patternUnits="userSpaceOnUse">
+            <Rect width="8" height="8" fill={colors.cloth} />
+            <Line x1="0" y1="1" x2="8" y2="1" stroke={colors.linenShadow} strokeWidth="0.65" opacity="0.42" />
+            <Line x1="0" y1="5" x2="8" y2="5" stroke={colors.linenDeep} strokeWidth="0.5" opacity="0.3" />
+            <Line x1="1" y1="0" x2="1" y2="8" stroke={colors.linenShadow} strokeWidth="0.55" opacity="0.32" />
+            <Line x1="5" y1="0" x2="5" y2="8" stroke={colors.linenDeep} strokeWidth="0.45" opacity="0.26" />
           </Pattern>
+          <LinearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={colors.woodLight} />
+            <Stop offset="0.48" stopColor={colors.wood} />
+            <Stop offset="1" stopColor={colors.woodDark} />
+          </LinearGradient>
+          <LinearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor="#FFFFFF" />
+            <Stop offset="0.48" stopColor="#B9C0C8" />
+            <Stop offset="1" stopColor="#626A75" />
+          </LinearGradient>
+          <RadialGradient id="clothShade" cx="42%" cy="35%" r="66%">
+            <Stop offset="0.68" stopColor={colors.cloth} stopOpacity="0" />
+            <Stop offset="1" stopColor={colors.linenShadow} stopOpacity="0.4" />
+          </RadialGradient>
         </Defs>
 
-        <Circle cx={size / 2} cy={size / 2} r={size * 0.485} fill={colors.woodDark} opacity={0.23} />
-        <Circle cx={size / 2} cy={size / 2} r={size * 0.455} fill={colors.wood} />
-        <Circle cx={size / 2} cy={size / 2} r={size * 0.407} fill="url(#weave)" />
-        <Circle cx={size / 2} cy={size / 2} r={size * 0.407} fill="none" stroke={colors.woodDark} strokeWidth={2} opacity={0.45} />
+        <Circle cx={size / 2} cy={size / 2 + size * 0.025} r={size * 0.475} fill={colors.woodDark} opacity={0.25} />
+        <Circle cx={size / 2} cy={size / 2} r={size * 0.468} fill="url(#wood)" />
+        <Circle cx={size / 2} cy={size / 2} r={size * 0.446} fill="none" stroke={colors.woodLight} strokeWidth={size * 0.012} opacity={0.8} />
+        <Circle cx={size / 2} cy={size / 2} r={size * 0.41} fill="url(#weave)" />
+        <Circle cx={size / 2} cy={size / 2} r={size * 0.41} fill="url(#clothShade)" />
+        <Circle cx={size / 2} cy={size / 2} r={size * 0.412} fill="none" stroke={colors.woodDark} strokeWidth={size * 0.012} opacity={0.58} />
+        <Path
+          d={`M ${size * 0.17} ${size * 0.27} A ${size * 0.39} ${size * 0.39} 0 0 1 ${size * 0.68} ${size * 0.105}`}
+          fill="none"
+          stroke={colors.white}
+          strokeWidth={size * 0.012}
+          strokeLinecap="round"
+          opacity={0.22}
+        />
 
-        {level.edges
+        <Rect x={size * 0.44} y={size * 0.006} width={size * 0.12} height={size * 0.075} rx={size * 0.018} fill={colors.woodDark} />
+        <Rect x={size * 0.455} y={0} width={size * 0.09} height={size * 0.065} rx={size * 0.016} fill="url(#metal)" />
+        <Line x1={size * 0.475} y1={size * 0.022} x2={size * 0.525} y2={size * 0.022} stroke={colors.woodDark} strokeWidth={2} />
+
+        {targetEdges(level)
           .filter((edge) => edge.side === visibleSide)
           .map((edge) => {
             const from = pointFor(nodeById.get(edge.from)!, visibleSide, size);
             const to = pointFor(nodeById.get(edge.to)!, visibleSide, size);
             const used = game.usedEdges.has(edgeKey(edge));
             return (
-              <Line
-                key={edgeKey(edge)}
-                x1={from.x}
-                y1={from.y}
-                x2={to.x}
-                y2={to.y}
-                stroke={used ? threadColor : softColor}
-                strokeWidth={used ? 7 : 3}
-                strokeLinecap="round"
-                strokeDasharray={used ? undefined : "4 8"}
-              />
+              <G key={edgeKey(edge)}>
+                {used ? (
+                  <>
+                    <Line
+                      x1={from.x + 1.4}
+                      y1={from.y + 2.4}
+                      x2={to.x + 1.4}
+                      y2={to.y + 2.4}
+                      stroke={threadDeep}
+                      strokeWidth={size * 0.029}
+                      strokeLinecap="round"
+                      opacity={0.28}
+                    />
+                    <Line
+                      x1={from.x}
+                      y1={from.y}
+                      x2={to.x}
+                      y2={to.y}
+                      stroke={threadColor}
+                      strokeWidth={size * 0.021}
+                      strokeLinecap="round"
+                    />
+                    <Line
+                      x1={from.x - 0.7}
+                      y1={from.y - 0.7}
+                      x2={to.x - 0.7}
+                      y2={to.y - 0.7}
+                      stroke={colors.white}
+                      strokeWidth={size * 0.005}
+                      strokeLinecap="round"
+                      opacity={0.45}
+                    />
+                  </>
+                ) : (
+                  <Line
+                    x1={from.x}
+                    y1={from.y}
+                    x2={to.x}
+                    y2={to.y}
+                    stroke={softColor}
+                    strokeWidth={size * 0.009}
+                    strokeLinecap="round"
+                    strokeDasharray={`${size * 0.012} ${size * 0.022}`}
+                  />
+                )}
+              </G>
             );
           })}
 
-        {level.nodes.map((node) => {
-          const point = pointFor(node, visibleSide, size);
-          const current = !previewing && node.id === game.currentNode && visibleSide === game.activeSide;
+        {level.holes.map((hole) => {
+          const point = pointFor(hole, visibleSide, size);
+          const current = showNeedle && hole.id === game.currentHole;
+          const target = !previewing && visibleSide === game.activeSide && validTargets.has(hole.id);
           return (
-            <Circle
-              key={node.id}
-              cx={point.x}
-              cy={point.y}
-              r={current ? 8 : 5.5}
-              fill={current ? colors.gold : colors.ink}
-              stroke={colors.cloth}
-              strokeWidth={3}
-            />
+            <G key={hole.id}>
+              {target ? <Circle cx={point.x} cy={point.y} r={size * 0.033} fill={softColor} opacity={0.9} /> : null}
+              <Circle cx={point.x + 0.8} cy={point.y + 1.5} r={size * 0.018} fill={colors.linenShadow} opacity={0.75} />
+              <Circle
+                cx={point.x}
+                cy={point.y}
+                r={current ? size * 0.019 : size * 0.014}
+                fill={current ? colors.gold : colors.ink}
+                stroke={colors.cloth}
+                strokeWidth={size * 0.008}
+              />
+            </G>
           );
         })}
+
+        {showNeedle ? (
+          <G>
+            <Path
+              d={`M ${currentPoint.x} ${currentPoint.y} Q ${currentPoint.x + size * 0.04} ${currentPoint.y + size * 0.08} ${currentPoint.x + size * 0.1} ${currentPoint.y + size * 0.075}`}
+              fill="none"
+              stroke={threadColor}
+              strokeWidth={size * 0.012}
+              strokeLinecap="round"
+            />
+            <Line
+              x1={currentPoint.x - size * 0.035}
+              y1={currentPoint.y + size * 0.04}
+              x2={currentPoint.x + size * 0.05}
+              y2={currentPoint.y - size * 0.055}
+              stroke={colors.ink}
+              strokeWidth={size * 0.018}
+              strokeLinecap="round"
+              opacity={0.18}
+            />
+            <Line
+              x1={currentPoint.x - size * 0.04}
+              y1={currentPoint.y + size * 0.032}
+              x2={currentPoint.x + size * 0.045}
+              y2={currentPoint.y - size * 0.062}
+              stroke="url(#metal)"
+              strokeWidth={size * 0.011}
+              strokeLinecap="round"
+            />
+            <Ellipse
+              cx={currentPoint.x + size * 0.038}
+              cy={currentPoint.y - size * 0.054}
+              rx={size * 0.006}
+              ry={size * 0.012}
+              fill={threadDeep}
+              transform={`rotate(42 ${currentPoint.x + size * 0.038} ${currentPoint.y - size * 0.054})`}
+            />
+          </G>
+        ) : null}
       </Svg>
 
-      {level.nodes.map((node) => {
-        const point = pointFor(node, visibleSide, size);
-        const isHint = !previewing && hintNode === node.id && visibleSide === game.activeSide;
-        const isCurrent = !previewing && node.id === game.currentNode && visibleSide === game.activeSide;
+      {level.holes.map((hole) => {
+        const point = pointFor(hole, visibleSide, size);
+        const isHint = !previewing && hintNode === hole.id && visibleSide === game.activeSide;
+        const isCurrent = !previewing && hole.id === game.currentHole && visibleSide === game.activeSide;
+        const isValid = !previewing && visibleSide === game.activeSide && validTargets.has(hole.id);
+        const stateLabel = isCurrent ? "needle position" : isValid ? "valid stitch" : "not available";
         return (
           <Pressable
-            key={node.id}
+            key={hole.id}
             accessibilityRole="button"
-            accessibilityLabel={isCurrent ? `Needle at hole ${node.id}` : `Stitch to hole ${node.id}`}
-            disabled={previewing}
-            hitSlop={6}
-            onPress={() => onNodePress(node.id)}
+            accessibilityLabel={`Hole ${hole.id.toUpperCase()}, ${stateLabel}`}
+            accessibilityHint={isValid ? "Places one stitch and flips the hoop" : undefined}
+            accessibilityState={{ disabled: interactionDisabled }}
+            disabled={interactionDisabled}
+            hitSlop={4}
+            onPress={() => onNodePress(hole.id)}
             style={({ pressed }) => [
               styles.nodeTarget,
               {
                 left: point.x - 24,
                 top: point.y - 24,
-                opacity: pressed ? 0.55 : 1
+                opacity: pressed ? 0.5 : 1
               }
             ]}
           >
             {isHint ? <View style={[styles.hintRing, { borderColor: threadColor }]} /> : null}
-            {isCurrent ? <Text style={styles.needle}>╱</Text> : null}
           </Pressable>
         );
       })}
 
+      <View style={[styles.sideLabel, { backgroundColor: threadDeep }]} pointerEvents="none">
+        <View style={[styles.sideLabelDot, { backgroundColor: threadColor }]} />
+        <Text style={styles.sideLabelText}>{visibleSide === "front" ? "FRONT" : "BACK"}</Text>
+      </View>
+
       {previewing ? (
         <View style={styles.previewBadge} pointerEvents="none">
-          <Text style={styles.previewText}>PREVIEW</Text>
+          <Text style={styles.previewText}>LOOKING ONLY</Text>
         </View>
       ) : null}
     </View>
@@ -138,11 +281,10 @@ const styles = StyleSheet.create({
   frame: {
     alignSelf: "center",
     backgroundColor: colors.cloth,
-    shadowColor: colors.woodDark,
     shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    elevation: 10
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    elevation: 12
   },
   nodeTarget: {
     position: "absolute",
@@ -152,37 +294,55 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius.pill
   },
-  needle: {
-    color: colors.white,
-    fontSize: 32,
-    lineHeight: 34,
-    fontWeight: "800",
-    textShadowColor: colors.ink,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 1
-  },
   hintRing: {
-    position: "absolute",
-    width: 38,
-    height: 38,
+    width: 42,
+    height: 42,
     borderWidth: 3,
     borderRadius: radius.pill,
-    backgroundColor: "rgba(255,255,255,0.45)"
+    backgroundColor: "rgba(255,255,255,0.52)",
+    shadowColor: colors.white,
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4
+  },
+  sideLabel: {
+    position: "absolute",
+    bottom: 18,
+    alignSelf: "center",
+    minHeight: 30,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.32)"
+  },
+  sideLabelDot: {
+    width: 7,
+    height: 7,
+    borderRadius: radius.pill
+  },
+  sideLabelText: {
+    color: colors.white,
+    fontFamily: type.bodyBold,
+    fontSize: 10,
+    letterSpacing: 1.1
   },
   previewBadge: {
     position: "absolute",
     top: 28,
     alignSelf: "center",
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     paddingVertical: 7,
     backgroundColor: colors.ink,
     borderRadius: radius.pill
   },
   previewText: {
     color: colors.white,
-    fontFamily: type.brand,
-    fontSize: 11,
-    fontWeight: "800",
-    letterSpacing: 1.4
+    fontFamily: type.bodyBold,
+    fontSize: 10,
+    letterSpacing: 1.15
   }
 });

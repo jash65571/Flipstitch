@@ -1,18 +1,16 @@
-import type { GameState, Level, Move, MoveResult, Side, StitchEdge } from "./types.ts";
+import { canonicalEdgeKey, oppositeSide, solveFromState, targetEdges } from "./solver.ts";
+import type { GameState, Level, Move, MoveResult, StitchEdge } from "./types.ts";
 
-export function oppositeSide(side: Side): Side {
-  return side === "front" ? "back" : "front";
-}
+export { oppositeSide } from "./solver.ts";
 
 export function edgeKey(edge: StitchEdge): string {
-  const [first, second] = [edge.from, edge.to].sort();
-  return `${edge.side}:${first}:${second}`;
+  return canonicalEdgeKey(edge);
 }
 
 export function createGame(level: Level): GameState {
   return {
     activeSide: level.startSide,
-    currentNode: level.startNode,
+    currentHole: level.startHole,
     moves: [],
     usedEdges: new Set<string>(),
     complete: false
@@ -20,10 +18,10 @@ export function createGame(level: Level): GameState {
 }
 
 export function availableNodes(level: Level, state: GameState): string[] {
-  return level.edges
+  return targetEdges(level)
     .filter((edge) => edge.side === state.activeSide && !state.usedEdges.has(edgeKey(edge)))
-    .filter((edge) => edge.from === state.currentNode || edge.to === state.currentNode)
-    .map((edge) => (edge.from === state.currentNode ? edge.to : edge.from));
+    .filter((edge) => edge.from === state.currentHole || edge.to === state.currentHole)
+    .map((edge) => (edge.from === state.currentHole ? edge.to : edge.from));
 }
 
 export function playMove(level: Level, state: GameState, targetNode: string): MoveResult {
@@ -31,15 +29,15 @@ export function playMove(level: Level, state: GameState, targetNode: string): Mo
     return { ok: false, state, reason: "complete" };
   }
 
-  if (targetNode === state.currentNode) {
+  if (targetNode === state.currentHole) {
     return { ok: false, state, reason: "same-hole" };
   }
 
-  const matchingEdge = level.edges.find(
+  const matchingEdge = targetEdges(level).find(
     (edge) =>
       edge.side === state.activeSide &&
-      ((edge.from === state.currentNode && edge.to === targetNode) ||
-        (edge.to === state.currentNode && edge.from === targetNode))
+      ((edge.from === state.currentHole && edge.to === targetNode) ||
+        (edge.to === state.currentHole && edge.from === targetNode))
   );
 
   if (!matchingEdge) {
@@ -53,15 +51,15 @@ export function playMove(level: Level, state: GameState, targetNode: string): Mo
 
   const usedEdges = new Set(state.usedEdges);
   usedEdges.add(key);
-  const move: Move = { ...matchingEdge, from: state.currentNode, to: targetNode, key };
-  const complete = usedEdges.size === level.edges.length;
+  const move: Move = { ...matchingEdge, from: state.currentHole, to: targetNode, key };
+  const complete = usedEdges.size === targetEdges(level).length;
 
   return {
     ok: true,
     completedNow: complete,
     state: {
       activeSide: oppositeSide(state.activeSide),
-      currentNode: targetNode,
+      currentHole: targetNode,
       moves: [...state.moves, move],
       usedEdges,
       complete
@@ -80,7 +78,7 @@ export function undoMove(level: Level, state: GameState): GameState {
 
   return {
     activeSide: oppositeSide(state.activeSide),
-    currentNode: lastMove?.to ?? level.startNode,
+    currentHole: lastMove?.to ?? level.startHole,
     moves,
     usedEdges,
     complete: false
@@ -88,7 +86,7 @@ export function undoMove(level: Level, state: GameState): GameState {
 }
 
 export function progress(level: Level, state: GameState): number {
-  return state.usedEdges.size / level.edges.length;
+  return state.usedEdges.size / targetEdges(level).length;
 }
 
 export function nextHint(level: Level, state: GameState): string | null {
@@ -96,7 +94,6 @@ export function nextHint(level: Level, state: GameState): string | null {
     return null;
   }
 
-  const expectedIndex = state.moves.length + 1;
-  const expectedNode = level.solution[expectedIndex];
-  return availableNodes(level, state).includes(expectedNode) ? expectedNode : availableNodes(level, state)[0] ?? null;
+  const continuation = solveFromState(level, state, 1).solutions[0];
+  return continuation?.[1] ?? null;
 }

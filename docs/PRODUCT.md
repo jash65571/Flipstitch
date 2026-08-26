@@ -26,11 +26,11 @@ We start with one polished level, not a large menu. It must prove five things:
 - Coral thread on the front and iris thread on the back.
 - Soft black text, restrained gold and teal accents.
 - Large touch targets around small visual holes.
-- Brand type target: Bricolage Grotesque.
-- Interface type target: Manrope.
-- Use system fonts until the licensed font assets are bundled and tested.
+- Bricolage Grotesque for the level title and completion reveal.
+- Manrope for controls, state, progress, and instructions.
+- Both font families are bundled for offline use under the SIL Open Font License.
 
-The puzzle takes most of the screen. The only play controls are Undo, Preview, and Hint. Reduced motion replaces the flip with a quick side swap.
+The puzzle takes most of the screen. The only play controls are Undo, Preview, and Hint. Reduced motion replaces the flip with an instant side swap.
 
 ## Growth path
 
@@ -73,6 +73,18 @@ The prototype gate is behavioral, not opinion-based:
 - At least 60% choose to start level four.
 
 These are early decision gates. Launch targets will be set after real test data exists.
+
+## Content proof collection
+
+The first collection is ten handcrafted Day & Night hoops. It grows one reasoning skill at a time:
+
+1. First Thread and Kite Tail teach the forced side change from both starting sides.
+2. Twin Petals and Butterfly Turn show that some choices are equally safe.
+3. Forked Needle and Echo Stairs introduce branches that reward Undo and planning.
+4. Orbit Bloom and Laced Window use shared holes and alternating loops.
+5. Moonlit Return and Master Sampler require closing short returns before moving onward.
+
+Difficulty comes from path planning. It never comes from timers, lives, hidden rules, or smaller touch targets. The collection gallery shows a mini hoop, a written difficulty, clear lock state, best completion, and one direct Continue action.
 
 ## Non-negotiable rules
 
