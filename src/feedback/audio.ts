@@ -5,20 +5,22 @@
  *  - One player is created per sound and kept for the app lifetime.
  *  - Players are created lazily on first use, so nothing blocks the first
  *    playable screen.
- *  - `release()` releases every player (called when the feedback controller
- *    is torn down). After release all playback becomes a no-op.
+ *  - `release()` releases every player and cancels every pending delayed sound
+ *    (delays are tracked independently, so one layered sound cannot overwrite
+ *    another's timer).
  *
  * Failure safety:
- *  - Every play is wrapped so audio problems can never throw into gameplay.
+ *  - Every native call is promise-safe: synchronous throws are caught and any
+ *    returned promise gets a rejection handler, so audio can never produce an
+ *    unhandled rejection or block gameplay.
  *  - Repeated playback of the same sound is throttled per sound to prevent
  *    uncontrolled overlap during rapid tapping.
- *  - Layered sounds (e.g. thread-tighten after needle-pierce) are scheduled
- *    with a guarded timer.
  */
 
 import { createAudioPlayer, type AudioPlayer } from "expo-audio";
 
 import type { SoundName } from "./mapping.ts";
+import { TimerSet } from "./timers.ts";
 
 export const SOUND_ASSETS: Record<SoundName, number> = {
   "needle-pierce": require("../../assets/sounds/needle-pierce.wav"),
@@ -39,11 +41,26 @@ export type AudioService = {
   release(): void;
 };
 
+/**
+ * Invokes a native call safely: catches synchronous throws and attaches a
+ * rejection handler to any returned promise.
+ */
+function safeInvoke(call: () => unknown): void {
+  try {
+    const result = call();
+    if (result && typeof (result as PromiseLike<unknown>).then === "function") {
+      (result as PromiseLike<unknown>).then(undefined, () => undefined);
+    }
+  } catch {
+    // Audio failure must never block gameplay.
+  }
+}
+
 export function createAudioService(): AudioService {
   const players = new Map<SoundName, AudioPlayer>();
   const lastPlayedAt = new Map<SoundName, number>();
+  const delayed = new TimerSet();
   let released = false;
-  let timer: ReturnType<typeof setTimeout> | null = null;
 
   function playerFor(name: SoundName): AudioPlayer | null {
     if (released) return null;
@@ -67,21 +84,14 @@ export function createAudioService(): AudioService {
 
     const player = playerFor(name);
     if (!player) return;
-    try {
-      player.seekTo(0);
-      player.play();
-    } catch {
-      // Audio failure must never block gameplay.
-    }
+    safeInvoke(() => player.seekTo(0));
+    safeInvoke(() => player.play());
   }
 
   function play(name: SoundName, delayMs = 0): void {
     if (released) return;
     if (delayMs > 0) {
-      timer = setTimeout(() => {
-        timer = null;
-        playNow(name);
-      }, delayMs);
+      delayed.schedule(() => playNow(name), delayMs);
       return;
     }
     playNow(name);
@@ -89,16 +99,9 @@ export function createAudioService(): AudioService {
 
   function release(): void {
     released = true;
-    if (timer !== null) {
-      clearTimeout(timer);
-      timer = null;
-    }
+    delayed.clearAll();
     for (const player of players.values()) {
-      try {
-        player.release();
-      } catch {
-        // Ignore release failures.
-      }
+      safeInvoke(() => player.release());
     }
     players.clear();
   }
