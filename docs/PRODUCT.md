@@ -41,6 +41,18 @@ The puzzle takes most of the screen. The only play controls are Undo, Preview, a
 - Local progress only.
 - Event logging for move, invalid move, undo, hint, restart, completion, and session exit.
 
+### Phase 1.5: feel and playtest proof (current)
+
+- Original synthesized sound effects for every action, generated in-repo.
+- One feedback controller that maps semantic events to sound and haptics and
+  honors Sound Off and Haptics Off.
+- A minimal Settings screen: sound, haptics, reduced-motion status, playtest
+  data view/export/clear, progress reset, and about/license info.
+- Local, bounded playtest events with session, sequence, timestamp, and
+  monotonic elapsed time. No accounts, ads, network, or external analytics.
+- A pure playtest report engine with small-sample warnings, exported from
+  Settings.
+
 ### Phase 2: content proof
 
 - 20-level Day & Night collection.
@@ -71,6 +83,14 @@ The prototype gate is behavioral, not opinion-based:
 - Median time to the first valid stitch stays under 10 seconds.
 - Fewer than 20% exit during the first three levels.
 - At least 60% choose to start level four.
+
+Feel gates for the playtest milestone:
+
+- Sound Off and Haptics Off each leave the game fully playable.
+- Reduced motion keeps clear nonvisual feedback (sounds and haptics).
+- Invalid moves feel distinct but never harsh.
+- The playtest report shows honest small-sample warnings instead of
+  pretending data exists.
 
 These are early decision gates. Launch targets will be set after real test data exists.
 

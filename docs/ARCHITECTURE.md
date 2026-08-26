@@ -16,6 +16,9 @@ src/screens/          Screen composition and input flow
 src/components/       Renderers and reusable controls
 src/game/             Pure rules, level data, solver-ready types
 src/progress/         Versioned local progress model and storage boundary
+src/feedback/         Semantic feedback mapping, audio, and haptic services
+src/settings/         Versioned sound/haptic preferences and storage boundary
+src/playtest/         Local playtest events, bounded store, and report engine
 src/theme/            Color, spacing, radius, and type tokens
 ```
 
@@ -42,12 +45,28 @@ Validation rejects missing holes, self-loops, same-side duplicate edges, wrong s
 
 Unlocking is linear and derived from contiguous completed levels. A completion unlocks the next hoop, every prior hoop remains replayable, and the gallery resumes at the last useful unlocked level.
 
+## Feedback, sound, and haptics
+
+`src/feedback/mapping.ts` is a pure table from semantic events (`stitchPlaced`, `sideChanged`, `invalidMove`, `undo`, `hint`, `levelCompleted`, `levelUnlocked`, `gallerySelected`) to sound and haptic plans. `controller.ts` applies the mapping through injected audio/haptic services and the persisted preferences, and deduplicates haptics when one action triggers several state changes (stitch → flip, completion → unlock).
+
+`audio.ts` plays nine original WAV files through `expo-audio`, creating one player per sound lazily, throttling per-sound repeats, and releasing everything on teardown. `haptics.ts` uses `performAndroidHapticsAsync` on Android and the impact/notification/selection family elsewhere; all calls fail safely. Screens never choose raw filenames or platform constants.
+
+## Settings
+
+`src/settings/model.ts` is a pure, versioned preferences reducer (sound and haptics). `SettingsProvider` is the Async Storage boundary. Reduced motion is deliberately not stored: it follows the system setting through `AccessibilityInfo`, which is the accessible default.
+
+## Local playtest
+
+`src/playtest/events.ts` defines the schema-versioned event set. `store.ts` provides pure bounded-store operations (5000-event cap, oldest-first eviction, corrupt-data fallback) plus a debounced AsyncStorage adapter so rapid taps never saturate storage. `tracker.ts` stamps events with session id, per-session sequence, epoch timestamp, and monotonic elapsed time, and deduplicates exit/completion events per session. `report.ts` is a pure summary engine for all milestone metrics with explicit small-sample warnings; Settings renders it and can share it.
+
+The playtest store collects no names, emails, accounts, location, contacts, advertising identifiers, device fingerprints, or unrelated device data, and performs no network requests. `scripts/scan-analytics.mjs` enforces this in CI.
+
 ## Planned engineering gates
 
 1. Prove the core interaction on real iOS and Android devices.
 2. Add a solver that rejects impossible or multi-solution levels.
-3. Add persisted progress and analytics behind small interfaces.
-4. Add audio, richer haptics, and Skia rendering after mechanic validation.
+3. Add persisted progress and local playtest tracking behind small interfaces.
+4. Add audio and richer haptics behind one feedback controller. (Skia rendering remains a later option; the SVG renderer still meets current needs.)
 5. Add purchases and ads only after retention data supports them.
 
 ## Quality rules
