@@ -4,6 +4,7 @@ import { AccessibilityInfo, Pressable, ScrollView, Share, StyleSheet, Switch, Te
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useFeedback } from "@/feedback/FeedbackProvider";
+import { Icon, type IconName } from "@/components/Icon";
 import { levels } from "@/game/levels";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { buildPlaytestReport, formatReadableReport } from "@/playtest/report";
@@ -16,7 +17,7 @@ import {
   type ConfirmState
 } from "@/settings/confirm";
 import { useSettings } from "@/settings/SettingsProvider";
-import { colors, radius, space, type } from "@/theme/tokens";
+import { colors, palette, radius, space, type } from "@/theme/tokens";
 
 const CONFIRM_ARM_MS = 4000;
 
@@ -154,7 +155,12 @@ export function SettingsScreen() {
     setViewing(null);
   }
 
-  const sectionHeading = (text: string) => <Text maxFontSizeMultiplier={1.5} style={styles.sectionHeading}>{text}</Text>;
+  const sectionHeading = (text: string, icon: IconName) => (
+    <View style={styles.sectionHeadingRow}>
+      <Icon name={icon} size={16} color={palette.brassDeep} accent={colors.tealDeep} strokeWidth={1.9} />
+      <Text maxFontSizeMultiplier={1.5} style={styles.sectionHeading}>{text}</Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
@@ -170,7 +176,7 @@ export function SettingsScreen() {
         <Text maxFontSizeMultiplier={1.6} style={styles.title}>Make it yours</Text>
         <Text maxFontSizeMultiplier={1.9} style={styles.subtitle}>Tune the feel of every stitch. Everything stays on this device.</Text>
 
-        {sectionHeading("FEEL")}
+        {sectionHeading("Feel", "hint")}
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.rowCopy}>
@@ -207,7 +213,7 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {sectionHeading("MOTION")}
+        {sectionHeading("Motion", "thread")}
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.rowCopy}>
@@ -219,7 +225,7 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {sectionHeading("PLAYTEST")}
+        {sectionHeading("Playtest", "chapter")}
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.rowCopy}>
@@ -267,7 +273,7 @@ export function SettingsScreen() {
           />
         </View>
 
-        {sectionHeading("PROGRESS")}
+        {sectionHeading("Progress", "completed")}
         <View style={styles.card}>
           <View style={styles.row}>
             <View style={styles.rowCopy}>
@@ -283,7 +289,7 @@ export function SettingsScreen() {
           />
         </View>
 
-        {sectionHeading("ABOUT")}
+        {sectionHeading("About", "needle")}
         <View style={styles.card}>
           <Text maxFontSizeMultiplier={1.7} style={styles.aboutLine}>FlipStitch 0.1.0 · feel and playtest proof</Text>
           <Text maxFontSizeMultiplier={1.7} style={styles.aboutDetail}>
@@ -310,7 +316,8 @@ const styles = StyleSheet.create({
   navPlaceholder: { width: 72, minHeight: 48 },
   title: { marginTop: space.sm, color: colors.ink, fontFamily: type.brandHeavy, fontSize: 30, lineHeight: 34, letterSpacing: -0.7 },
   subtitle: { marginTop: 5, color: colors.inkSoft, fontFamily: type.bodyMedium, fontSize: 14, lineHeight: 21 },
-  sectionHeading: { marginTop: space.lg, marginBottom: 7, color: colors.inkSoft, fontFamily: type.bodyBold, fontSize: 9, letterSpacing: 1.3 },
+  sectionHeadingRow: { marginTop: space.lg, marginBottom: 9, flexDirection: "row", alignItems: "center", gap: 7 },
+  sectionHeading: { color: colors.ink, fontFamily: type.brandSemi, fontSize: 15, letterSpacing: 0 },
   card: { padding: space.md, backgroundColor: colors.cloth, borderWidth: 1, borderColor: colors.linenShadow, borderRadius: radius.md, marginBottom: space.md },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space.md },
   rowCopy: { flex: 1, minWidth: 0 },
