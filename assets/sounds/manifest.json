@@ -1,0 +1,61 @@
+{
+  "sampleRate": 44100,
+  "bitDepth": 16,
+  "channels": 1,
+  "sounds": [
+    {
+      "name": "needle-pierce.wav",
+      "seconds": 0.09,
+      "peakDb": -6,
+      "rmsDb": -21.7
+    },
+    {
+      "name": "thread-tighten.wav",
+      "seconds": 0.16,
+      "peakDb": -6,
+      "rmsDb": -14.3
+    },
+    {
+      "name": "hoop-flip.wav",
+      "seconds": 0.22,
+      "peakDb": -6,
+      "rmsDb": -20
+    },
+    {
+      "name": "invalid-stitch.wav",
+      "seconds": 0.22,
+      "peakDb": -6,
+      "rmsDb": -18
+    },
+    {
+      "name": "undo.wav",
+      "seconds": 0.1,
+      "peakDb": -6,
+      "rmsDb": -14.2
+    },
+    {
+      "name": "hint.wav",
+      "seconds": 0.2,
+      "peakDb": -6,
+      "rmsDb": -17.3
+    },
+    {
+      "name": "level-complete.wav",
+      "seconds": 0.5,
+      "peakDb": -6,
+      "rmsDb": -15.7
+    },
+    {
+      "name": "next-level-unlock.wav",
+      "seconds": 0.24,
+      "peakDb": -6,
+      "rmsDb": -17.1
+    },
+    {
+      "name": "gallery-selection.wav",
+      "seconds": 0.09,
+      "peakDb": -6,
+      "rmsDb": -17.4
+    }
+  ]
+}

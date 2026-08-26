@@ -9,13 +9,16 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "node --test --experimental-strip-types src/game/content-flow.test.ts src/game/engine.test.ts src/game/solver.test.ts src/progress/model.test.ts src/screens/gallery-layout.test.ts src/screens/layout.test.ts src/theme/contrast.test.ts",
+    "test": "node --test --experimental-strip-types src/game/content-flow.test.ts src/game/engine.test.ts src/game/solver.test.ts src/progress/model.test.ts src/screens/gallery-layout.test.ts src/screens/layout.test.ts src/theme/contrast.test.ts src/feedback/controller.test.ts src/settings/model.test.ts src/playtest/store.test.ts src/playtest/tracker.test.ts src/playtest/report.test.ts",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "export:android": "expo export --platform android --output-dir dist/android",
     "export:ios": "expo export --platform ios --output-dir dist/ios",
     "export:web": "expo export --platform web --output-dir dist/web",
-    "check": "npm test && npm run typecheck && npm run doctor"
+    "generate:sounds": "node scripts/generate-sounds.mjs",
+    "validate:audio": "node scripts/validate-audio.mjs",
+    "scan:analytics": "node scripts/scan-analytics.mjs",
+    "check": "npm test && npm run typecheck && npm run doctor && npm run validate:audio && npm run scan:analytics"
   },
   "dependencies": {
     "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
@@ -23,6 +26,8 @@
     "@expo/metro-runtime": "~57.0.13",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~57.0.9",
+    "expo-asset": "~57.0.14",
+    "expo-audio": "~57.0.4",
     "expo-constants": "~57.0.14",
     "expo-font": "~57.0.1",
     "expo-haptics": "~57.0.1",
