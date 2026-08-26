@@ -3,10 +3,23 @@ import test from "node:test";
 
 import { measureLevel } from "./analyzer.ts";
 import { availableNodes, createGame, guidanceFor, nextHint, playMove, stagedHint } from "./engine.ts";
-import { levels } from "./levels.ts";
+import { levels } from "../content/catalog.ts";
 import type { GameState, Level } from "./types.ts";
 
-/** The locked-in measured curve: strictly monotonic, no drops anywhere. */
+/**
+ * The locked-in measured curve for Collection 01.
+ *
+ * This array is a **regression guard on the authored content**, not a law of
+ * the game. Prompt 6 required every level to score above the one before it;
+ * Prompt 7 retired that as a global rule, because an endlessly rising line
+ * hits the 0-100 ceiling within one collection and leaves no room to teach.
+ *
+ * What replaces it lives in `src/content/pacing.ts`: chapter-scoped invariants
+ * (capstone is the chapter peak, guidance never strengthens, a large drop needs
+ * an authored reason) plus advisory design warnings. This test still pins the
+ * exact measured values, so an accidental change to a hoop or to the analyzer
+ * is caught immediately — but a future collection is free to breathe.
+ */
 const EXPECTED_SCORES = [15, 22, 28, 31, 39, 54, 60, 64, 77, 80];
 
 function play(level: Level, path: string[]): GameState {
@@ -19,11 +32,19 @@ function play(level: Level, path: string[]): GameState {
   return state;
 }
 
-test("the ten-level difficulty curve never drops", () => {
+test("the measured curve for Collection 01 is exactly as authored", () => {
   const scores = levels.map((level) => measureLevel(level).score.total);
   assert.deepEqual(scores, EXPECTED_SCORES, "the authored curve changed; update this test only with intent");
+});
+
+test("Collection 01 in particular still rises the whole way — a property of this content, not a global rule", () => {
+  // Day & Night is one continuous ten-level learning arc, so it happens to be
+  // monotonic. Asserting it here documents *this collection's* shape. The rule
+  // that governs future content is in src/content/pacing.ts, and it permits a
+  // paced drop; see pacing.test.ts.
+  const scores = levels.map((level) => measureLevel(level).score.total);
   for (let index = 1; index < scores.length; index += 1) {
-    assert.ok(scores[index] > scores[index - 1], `level ${index + 1} must not be easier than level ${index}`);
+    assert.ok(scores[index] > scores[index - 1], `level ${index + 1} is easier than level ${index}`);
   }
 });
 
@@ -93,7 +114,7 @@ test("Level 10 stays the strongest capstone", () => {
   assert.ok(capstone.solutionDecisionStates >= 5, "the capstone should hold many meaningful decisions");
 });
 
-test("guidance never increases again late in the collection", () => {
+test("guidance never increases again late in the collection (also enforced per chapter by the pacing validator)", () => {
   const guidance = levels.map((level) => guidanceFor(level));
   const strength = { full: 3, reduced: 2, minimal: 1 } as const;
   for (let index = 1; index < guidance.length; index += 1) {

@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
-import { levels } from "@/game/levels";
+import { levels } from "@/content/catalog";
 import {
   emptyProgress,
   isLevelUnlocked,

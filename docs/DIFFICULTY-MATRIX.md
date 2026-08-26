@@ -1,9 +1,24 @@
 # Difficulty Matrix — Collection 01 "Day & Night"
 
 Prompt 6 re-authored the ten-level curve and built the measuring system behind
-it. Every figure below is **measured**, not asserted: `scripts/analyze-levels.mjs`
+it. Every figure below is **measured**, not asserted: `npm run analyze:levels`
 walks each level's entire reachable state space (position × side × used-edge
 set) with the pure, deterministic analyzer in `src/game/analyzer.ts`.
+
+> **Prompt 7 update.** The scores below are unchanged — no puzzle was touched.
+> What changed around them:
+>
+> - The ten levels are now **two chapters** of Collection 01: *First Light*
+>   (1-5) and *After Dark* (6-10). See `docs/CONTENT-ARCHITECTURE.md`.
+> - The strict global rule "every level must score above the previous one" is
+>   **retired as a rule of the game**. It survives only as a regression pin on
+>   this collection's authored content. Difficulty is now paced per chapter —
+>   see `docs/PROGRESSION-PACING.md`.
+> - One analyzer metric was corrected and one renamed (below). Neither feeds the
+>   difficulty score, so **no score moved**.
+> - Every figure is exact. The analyzer reports `solutionCountExact` and
+>   `exhaustive`, and a capped or budget-limited measurement is never labelled
+>   exact.
 
 ## The FlipStitch difficulty score (transparent, not a mystery number)
 
@@ -33,7 +48,62 @@ Measured tiers: **Gentle** < 15 · **Easy** 15–34 · **Moderate** 35–54 ·
 **Tricky** 55–74 · **Expert** ≥ 75. `tierForScore()` maps the total; every
 level's authored label must equal its measured tier (regression-tested).
 
-## Measured matrix (Prompt 6, post re-author)
+## Corrected analyzer metrics (Prompt 7)
+
+Two metric definitions were audited against their documentation and fixed. The
+difficulty score reads `solutionDecisionStates`, `maxBranching`,
+`forcedMovePercent`, `dangerousDecisions`, `maxConsequenceDepth`,
+`distinctDeadEnds`, and `totalStitches` — none of which changed — so every total
+below is byte-identical to Prompt 6.
+
+**`safeAlternativeCount` — real bug, fixed.** Documented as "safe stitches
+available at dangerous-decision states". The implementation counted a safe
+stitch at *every* decision state, dangerous or not, so a trap-free level
+reported safe "alternatives" to a danger that did not exist. It now counts only
+at states where at least one legal stitch dooms the thread.
+
+| # | Level | Old (wrong) | New (correct) | Why |
+|---|---|---|---|---|
+| 1 | First Thread | 2 | **0** | no dangerous decision exists |
+| 2 | Kite Tail | 5 | **0** | no dangerous decision exists |
+| 3 | Twin Petals | 8 | **0** | no dangerous decision exists |
+| 4 | Butterfly Turn | 9 | **0** | no dangerous decision exists |
+| 5 | Forked Needle | 1 | 1 | unchanged — already only counted at the one dangerous fork |
+| 6 | Echo Stairs | 2 | 2 | unchanged |
+| 7 | Orbit Bloom | 4 | 4 | unchanged |
+| 8 | Laced Window | 4 | 4 | unchanged |
+| 9 | Moonlit Return | 6 | 6 | unchanged |
+| 10 | Master Sampler | 6 | 6 | unchanged |
+
+Only the four trap-free levels changed, and all four changed to zero — which is
+the correct answer. **No tier threshold needed adjusting**, because the metric
+never fed the score. The design rule it supports ("a dangerous decision must
+always have a safe alternative") is unaffected and still holds on every trap
+level. Regression test: `src/game/analyzer-scale.test.ts`.
+
+**`unsafeMoveCount` → `unsafeChoiceCount` — rename for accuracy, no value
+change.** It counts doomed stitches *offered at decision states*; forced moves
+are excluded because a move with no alternative is not a choice a player can get
+wrong. The old name implied "all doomed stitches anywhere". Values are
+unchanged: 0, 0, 0, 0, 1, 4, 3, 3, 28, 120.
+
+**Audited and correct as documented**, no change needed: `decisionStates`,
+`solutionDecisionStates`, `forcedMoveStates`, `forcedMovePercent`,
+`maxBranching`, `avgBranching`, `distinctDeadEnds`, `doomedStates`,
+`earliestDoomDepth`, `dangerousDecisions`, `maxConsequenceDepth`, `sharedHoles`,
+`hubCount`, `averageDegree`, `frontEdges`, `backEdges`, `frontDecisionShare`,
+`canTrap`, `reachableStates`. Three metrics were added:
+`solutionCountExact`, `exhaustive`, and the honest `SolutionCount` shape in the
+solver.
+
+## Chapter structure (Prompt 7)
+
+| Chapter | Role | Levels | Capstone | Resets difficulty? |
+|---|---|---|---|---|
+| First Light | `tutorial` | 1-5 (15 → 39) | Forked Needle | yes (first chapter) |
+| After Dark | `mastery` | 6-10 (54 → 80) | Master Sampler | no — one arc continues across the seam, reason authored on Echo Stairs |
+
+## Measured matrix (Prompt 6 scores, Prompt 7 metric corrections)
 
 | # | Level | Difficulty | Stitches | Solutions | Meaningful decisions¹ | Forced share | Max branch | Dead ends | Dangerous decisions | Consequence depth | Score | Can trap? | Guidance |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -54,10 +124,16 @@ solution path with ≥2 legal stitches (the old column, now called
 decisions, and consequence depth are defined in `src/game/analyzer.ts` and in
 `docs/LEVEL-DESIGN-GUIDE.md`.
 
-The curve **15 → 22 → 28 → 31 → 39 → 54 → 60 → 64 → 77 → 80** is strictly
-monotonic: no level is easier than the one before it, and every tier boundary
-is crossed only when the measurements say so. `src/game/difficulty.test.ts`
-fails if this curve ever drops.
+The curve **15 → 22 → 28 → 31 → 39 → 54 → 60 → 64 → 77 → 80** rises the whole
+way, and every tier boundary is crossed only when the measurements say so.
+`src/game/difficulty.test.ts` pins these exact values, so an accidental change
+to a hoop or to the analyzer is caught immediately.
+
+That monotonic shape is a **property of this collection**, not a law imposed on
+future ones. Under the Prompt 7 pacing model a chapter may fall by up to 8
+points freely, or by any amount with an authored reason, so a new collection can
+open with teaching levels again instead of being forced above 80. The rules that
+do bind are in `src/content/pacing.ts` and `docs/PROGRESSION-PACING.md`.
 
 ## What changed per level (old → new)
 

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { availableNodes, createGame, nextHint, playMove, stagedHint } from "./engine.ts";
-import { getLevel, levels } from "./levels.ts";
+import { getLevel, levels } from "../content/catalog.ts";
 import type { GameState, Level } from "./types.ts";
 
 function play(level: Level, path: string[]): GameState {

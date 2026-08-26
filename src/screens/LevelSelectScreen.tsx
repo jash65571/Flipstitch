@@ -6,7 +6,9 @@ import { useFeedback } from "@/feedback/FeedbackProvider";
 import { Icon } from "@/components/Icon";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
 import { Wordmark } from "@/components/Wordmark";
-import { levels } from "@/game/levels";
+import { catalog } from "@/content/catalog";
+import { getChapterProgress, getCollectionProgress } from "@/content/navigation";
+import type { Chapter, Collection } from "@/content/types";
 import type { Level } from "@/game/types";
 import { useProgress } from "@/progress/ProgressProvider";
 import { getGalleryLayout } from "@/screens/gallery-layout";
@@ -21,7 +23,7 @@ type StopState = "locked" | "ready" | "current" | "completed";
  */
 function LevelStop({
   level,
-  index,
+  number,
   state,
   bestMoves,
   isFirst,
@@ -29,7 +31,7 @@ function LevelStop({
   onPress
 }: {
   level: Level;
-  index: number;
+  number: number;
   state: StopState;
   bestMoves?: number;
   isFirst: boolean;
@@ -49,7 +51,7 @@ function LevelStop({
         : current
           ? "Your thread rests here"
           : "Ready to stitch";
-  const accessibilityLabel = `Level ${index + 1}, ${level.title}, ${level.difficulty}. ${stateWord}.`;
+  const accessibilityLabel = `Level ${number}, ${level.title}, ${level.difficulty}. ${stateWord}.`;
 
   // The rail runs behind the node: the portion the thread has already travelled
   // (completed, or up to the current stop) reads in sage; what is still to come
@@ -77,7 +79,7 @@ function LevelStop({
             <Icon name="locked" size={15} color={colors.inkSoft} accent={colors.linenShadow} strokeWidth={1.8} />
           ) : (
             <Text allowFontScaling={false} style={[styles.nodeNumber, current && styles.nodeNumberCurrent]}>
-              {index + 1}
+              {number}
             </Text>
           )}
         </View>
@@ -113,24 +115,69 @@ function LevelStop({
   );
 }
 
+/**
+ * A stitched chapter divider. The rail thread runs straight through it, so the
+ * sampler still reads as one continuous journey; the chapter is a seam in the
+ * cloth, not a new screen. Completed chapters take a small finished seal.
+ */
+function ChapterDivider({ chapter, completed, total }: { chapter: Chapter; completed: number; total: number }) {
+  const finished = completed === total;
+  return (
+    <View
+      accessible
+      accessibilityRole="header"
+      accessibilityLabel={`${chapter.title}. ${chapter.subtitle} ${completed} of ${total} hoops stitched.`}
+      style={styles.divider}
+    >
+      <View style={styles.dividerRail}>
+        <View style={[styles.railLine, styles.railFull, completed > 0 ? styles.railDone : styles.railTodo]} />
+      </View>
+      <View style={styles.dividerBody}>
+        <View style={styles.dividerHeadingRow}>
+          <Icon name="chapter" size={16} color={palette.brassDeep} accent={colors.linenShadow} strokeWidth={1.9} />
+          <Text maxFontSizeMultiplier={1.6} style={styles.dividerTitle}>
+            {chapter.title}
+          </Text>
+          {finished ? (
+            <Icon name="completed" size={15} color={thread.front.deep} accent={thread.back.deep} strokeWidth={2.2} />
+          ) : null}
+        </View>
+        <Text maxFontSizeMultiplier={1.7} style={styles.dividerSubtitle}>
+          {chapter.subtitle}
+        </Text>
+        <Text maxFontSizeMultiplier={1.6} style={styles.dividerCount}>
+          {completed} of {total} stitched
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function LevelSelectScreen() {
   const router = useRouter();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
   const { data, loading, storageWarning, unlockedCount, resumeId, isUnlocked } = useProgress();
   const feedback = useFeedback();
   const { contentWidth } = getGalleryLayout(viewportWidth, fontScale);
-  const completedCount = Object.keys(data.completed).length;
-  const resumeIndex = levels.findIndex((level) => level.id === resumeId);
+
+  // Every word on this screen comes from content metadata. Adding a chapter or
+  // a collection must never require editing this file.
+  const levels = catalog.levels;
+  const collection: Collection | undefined = catalog.collections[0];
+  const isCompleted = (levelId: string) => Boolean(data.completed[levelId]);
+  const collectionProgress = collection
+    ? getCollectionProgress(collection, isCompleted)
+    : { total: 0, completed: 0, finished: true, nextIncompleteLevelId: null };
 
   function openLevel(levelId: string) {
     feedback.emit("gallerySelected");
     router.push({ pathname: "/level/[id]", params: { id: levelId } });
   }
 
-  function stopStateFor(level: Level, index: number): StopState {
+  function stopStateFor(level: Level): StopState {
     if (!isUnlocked(level.id)) return "locked";
     if (data.completed[level.id]) return "completed";
-    if (index === resumeIndex) return "current";
+    if (level.id === resumeId) return "current";
     return "ready";
   }
 
@@ -150,11 +197,19 @@ export function LevelSelectScreen() {
               <Icon name="settings" size={20} color={colors.inkSoft} accent={palette.brass} strokeWidth={1.9} />
             </Pressable>
           </View>
-          <Text maxFontSizeMultiplier={1.5} style={styles.chapter}>CHAPTER ONE</Text>
-          <Text maxFontSizeMultiplier={1.6} style={styles.title}>Day &amp; Night</Text>
-          <Text maxFontSizeMultiplier={1.9} style={styles.subtitle}>
-            Ten hoops on one thread. Follow the sampler down the page — each finished piece hands its thread to the next.
-          </Text>
+          {collection ? (
+            <>
+              <Text maxFontSizeMultiplier={1.5} style={styles.collectionLabel}>
+                {collection.subtitle.toUpperCase()}
+              </Text>
+              <Text maxFontSizeMultiplier={1.6} style={styles.title}>
+                {collection.title}
+              </Text>
+              <Text maxFontSizeMultiplier={1.9} style={styles.subtitle}>
+                {collection.description}
+              </Text>
+            </>
+          ) : null}
         </View>
 
         {loading ? (
@@ -162,7 +217,7 @@ export function LevelSelectScreen() {
             <ActivityIndicator color={colors.teal} size="small" />
             <Text style={styles.loadingText}>Finding your last thread…</Text>
           </View>
-        ) : levels.length === 0 ? (
+        ) : !collection || levels.length === 0 ? (
           <View accessible accessibilityRole="alert" style={styles.emptyState}>
             <Text style={styles.emptyTitle}>No hoops are ready</Text>
             <Text style={styles.emptyText}>The next crafted collection will appear here.</Text>
@@ -173,17 +228,29 @@ export function LevelSelectScreen() {
               accessible
               accessibilityRole="progressbar"
               accessibilityLabel="Collection progress"
-              accessibilityValue={{ min: 0, max: levels.length, now: completedCount, text: `${completedCount} of ${levels.length} hoops stitched` }}
+              accessibilityValue={{
+                min: 0,
+                max: collectionProgress.total,
+                now: collectionProgress.completed,
+                text: `${collectionProgress.completed} of ${collectionProgress.total} hoops stitched`
+              }}
               style={styles.progressLine}
             >
               <Text maxFontSizeMultiplier={1.6} style={styles.progressText}>
-                {completedCount} of {levels.length} hoops stitched
+                {collectionProgress.completed} of {collectionProgress.total} hoops stitched
               </Text>
               <View style={styles.progressStitches}>
-                {levels.map((level, index) => (
+                {levels.map((level) => (
                   <View
                     key={level.id}
-                    style={[styles.progressStitch, data.completed[level.id] ? styles.progressStitchDone : index === resumeIndex ? styles.progressStitchCurrent : null]}
+                    style={[
+                      styles.progressStitch,
+                      data.completed[level.id]
+                        ? styles.progressStitchDone
+                        : level.id === resumeId
+                          ? styles.progressStitchCurrent
+                          : null
+                    ]}
                   />
                 ))}
               </View>
@@ -192,18 +259,29 @@ export function LevelSelectScreen() {
             {storageWarning ? <Text accessibilityRole="alert" style={styles.warning}>{storageWarning}</Text> : null}
 
             <View style={styles.journey}>
-              {levels.map((level, index) => (
-                <LevelStop
-                  key={level.id}
-                  level={level}
-                  index={index}
-                  state={stopStateFor(level, index)}
-                  bestMoves={data.completed[level.id]?.bestMoves}
-                  isFirst={index === 0}
-                  isLast={index === levels.length - 1}
-                  onPress={() => openLevel(level.id)}
-                />
-              ))}
+              {collection.chapters.map((chapter) => {
+                const chapterProgress = getChapterProgress(chapter, isCompleted);
+                return (
+                  <View key={chapter.id}>
+                    <ChapterDivider chapter={chapter} completed={chapterProgress.completed} total={chapterProgress.total} />
+                    {chapter.levels.map((level) => {
+                      const globalIndex = levels.findIndex((candidate) => candidate.id === level.id);
+                      return (
+                        <LevelStop
+                          key={level.id}
+                          level={level}
+                          number={globalIndex + 1}
+                          state={stopStateFor(level)}
+                          bestMoves={data.completed[level.id]?.bestMoves}
+                          isFirst={false}
+                          isLast={globalIndex === levels.length - 1}
+                          onPress={() => openLevel(level.id)}
+                        />
+                      );
+                    })}
+                  </View>
+                );
+              })}
             </View>
             <Text style={styles.unlockNote}>
               {unlockedCount === levels.length ? "Every hoop is unlocked." : `Finish level ${unlockedCount} to unfold the next hoop.`}
@@ -233,7 +311,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md
   },
   settingsPressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
-  chapter: { marginTop: space.md, color: palette.brassDeep, fontFamily: type.bodyBold, fontSize: 11, letterSpacing: 2.4 },
+  collectionLabel: { marginTop: space.md, color: palette.brassDeep, fontFamily: type.bodyBold, fontSize: 11, letterSpacing: 2.4 },
   title: { marginTop: 4, color: colors.ink, fontFamily: type.brandHeavy, fontSize: 40, lineHeight: 44, letterSpacing: -1 },
   subtitle: { maxWidth: 560, marginTop: 8, color: colors.inkSoft, fontFamily: type.body, fontSize: 15, lineHeight: 22 },
   loadingState: { minHeight: 240, alignItems: "center", justifyContent: "center", gap: space.sm },
@@ -249,12 +327,20 @@ const styles = StyleSheet.create({
   progressStitchCurrent: { backgroundColor: colors.gold },
   warning: { marginBottom: space.md, color: colors.danger, fontFamily: type.bodySemibold, fontSize: 12, lineHeight: 18 },
   journey: {},
+  divider: { flexDirection: "row", alignItems: "stretch", minHeight: 72 },
+  dividerRail: { width: RAIL_WIDTH, alignItems: "center", justifyContent: "center" },
+  dividerBody: { flex: 1, minWidth: 0, marginLeft: 4, paddingVertical: space.sm, justifyContent: "center" },
+  dividerHeadingRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dividerTitle: { color: colors.ink, fontFamily: type.brand, fontSize: 20, lineHeight: 24 },
+  dividerSubtitle: { marginTop: 3, color: colors.inkSoft, fontFamily: type.body, fontSize: 13, lineHeight: 19 },
+  dividerCount: { marginTop: 5, color: palette.brassDeep, fontFamily: type.bodyBold, fontSize: 10, letterSpacing: 1.6 },
   stop: { flexDirection: "row", alignItems: "stretch", minHeight: 96 },
   stopPressed: { opacity: 0.9 },
   rail: { width: RAIL_WIDTH, alignItems: "center", justifyContent: "center" },
   railLine: { position: "absolute", left: RAIL_WIDTH / 2 - 1, width: 2 },
   railUpper: { top: 0, height: "50%" },
   railLower: { bottom: 0, height: "50%" },
+  railFull: { top: 0, bottom: 0 },
   railDone: { backgroundColor: palette.sage },
   railTodo: { backgroundColor: colors.linenShadow, opacity: 0.7 },
   railHidden: { backgroundColor: "transparent" },

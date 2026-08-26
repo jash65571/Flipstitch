@@ -53,7 +53,7 @@ The puzzle takes most of the screen. The only play controls are Undo, Preview, a
 - A pure playtest report engine with small-sample warnings, exported from
   Settings.
 
-### Phase 1.6: stabilization and Android device proof (current)
+### Phase 1.6: stabilization and Android device proof (complete)
 
 - Attempt identity on every level event: restarts, replays, exits, and
   completions are distinct, reported per attempt, and honest about legacy
@@ -64,12 +64,48 @@ The puzzle takes most of the screen. The only play controls are Undo, Preview, a
 - A repeatable internal Android APK build profile (`eas.json`) so the S25
   Ultra device pass can be run from any machine with an Expo account.
 
-### Phase 2: content proof
+### Phase 1.7: design system (Prompt 5, complete)
 
-- 20-level Day & Night collection.
-- Level validator and solver.
-- Completion gallery with both sides.
-- Daily Double Take puzzle.
+- The Living Sampler visual language is the source of truth
+  (`docs/DESIGN-BIBLE.md`): warm paper and cloth, a real hoop, a code-native
+  icon set, Fraunces + Atkinson Hyperlegible Next, and a gallery that reads as a
+  sampler book rather than a dashboard.
+
+### Phase 1.8: puzzle-depth foundation (Prompt 6, complete)
+
+- A pure analyzer measures every level's state space, and a transparent 0-100
+  difficulty score turns grading into measurement.
+- The ten levels were re-authored so each holds real decisions, fair traps, and
+  delayed consequences. Difficulty regression tests protect the result.
+- `docs/LEVEL-DESIGN-GUIDE.md` is the authoring reference.
+
+### Phase 1.9: scalable content foundation (Prompt 7, complete)
+
+- A real content hierarchy: **Catalog → Collection → Chapter → Level**, with
+  loud registry validation and deterministic ordering
+  (`docs/CONTENT-ARCHITECTURE.md`).
+- Day & Night is now one collection of two chapters — *First Light* (1-5) and
+  *After Dark* (6-10). No level id, geometry, solution, score, or saved
+  progress changed.
+- Difficulty became a **pacing system** rather than one endlessly rising line
+  (`docs/PROGRESSION-PACING.md`): six progression roles, chapter-scoped
+  invariants that fail the build, and advisory design warnings that do not.
+- A long-term skill map (`docs/PUZZLE-CURRICULUM.md`) shows how hundreds of
+  puzzles come from the one existing rule — no second mechanic.
+- Authoring tools scale: solution counting is memoised over states and is exact
+  or explicitly capped, never silently partial.
+
+### Phase 2: content proof (next)
+
+- Grow the catalog **by chapter**, not to a fixed level count. The old
+  "20-level Day & Night collection" target is retired: it was a prototype
+  number, and the chapter model makes the unit of content a coherent teaching
+  arc rather than a quota. A chapter ships when its concepts are taught,
+  practised, twisted, and closed by a capstone — typically five to eight hoops.
+- Collection 02 opens a new learning arc (`resetsDifficulty: true`) drawing on
+  the Tier 2 concepts in `docs/PUZZLE-CURRICULUM.md`.
+- Completion gallery showing both sides.
+- No daily puzzle yet; retention systems wait for content proof.
 
 ### Phase 3: retention proof
 
@@ -115,7 +151,7 @@ The first collection is ten handcrafted Day & Night hoops. It grows one reasonin
 4. Orbit Bloom and Laced Window use shared holes, alternating loops, and runners that never return — genuinely trap-capable planning levels.
 5. Moonlit Return and Master Sampler require closing short returns before moving onward, ending in a dense multi-loop capstone.
 
-The curve is measured and strictly rising (see `docs/DIFFICULTY-MATRIX.md`); the analyzer in `src/game/analyzer.ts` and the regression tests in `src/game/difficulty.test.ts` keep it that way. Difficulty comes from path planning. It never comes from timers, lives, hidden rules, or smaller touch targets. The collection gallery shows a mini hoop, a written difficulty, clear lock state, best completion, and one direct Continue action.
+Since Prompt 7 those ten hoops are two chapters of one collection: *First Light* (1-5, tutorial, capstone Forked Needle) and *After Dark* (6-10, mastery, capstone Master Sampler). The measured curve is unchanged and still rises the whole way (see `docs/DIFFICULTY-MATRIX.md`) — but that is now a property of *this* collection, not a rule imposed on future content. Chapter pacing rules in `src/content/pacing.ts` govern what comes next. Difficulty comes from path planning. It never comes from timers, lives, hidden rules, or smaller touch targets. The collection gallery shows a mini hoop, a written difficulty, clear lock state, best completion, and one direct Continue action.
 
 ## Non-negotiable rules
 

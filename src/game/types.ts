@@ -39,10 +39,19 @@ export type StitchEdge = EdgePair & {
   side: Side;
 };
 
+/**
+ * One authored hoop. A level owns only what describes *the puzzle*: geometry,
+ * targets, the authored solution, its measured difficulty label, and its
+ * teaching copy.
+ *
+ * It deliberately does NOT know its collection, chapter, position, or
+ * progression role. Those belong to the content hierarchy in `src/content/`,
+ * so a level can be re-placed without editing the puzzle, and so screens read
+ * one source of truth for titles and ordering.
+ */
 export type Level = {
   id: string;
   title: string;
-  collection: string;
   difficulty: Difficulty;
   startSide: Side;
   startHole: string;

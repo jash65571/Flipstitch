@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { levels } from "./levels.ts";
+import { levels } from "../content/catalog.ts";
 import { solveLevel, validateLevel } from "./solver.ts";
 import type { Level } from "./types.ts";
 
@@ -22,7 +22,9 @@ test("all ten production levels pass deterministic validation", () => {
   for (const level of levels) {
     const result = validateLevel(level);
     assert.equal(result.valid, true, `${level.id}: ${result.issues.map((issue) => issue.message).join("; ")}`);
-    assert.equal(result.solver.solutionCount, level.expectedSolutionCount);
+    assert.equal(result.solutions.count, level.expectedSolutionCount);
+    assert.equal(result.solutions.exact, true, `${level.id} must have an exact solution count`);
+    assert.equal(result.stranding.canStrand, level.allowDeadEnds, `${level.id} stranding intent`);
   }
 });
 

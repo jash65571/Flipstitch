@@ -1,3 +1,22 @@
+/**
+ * Level solving and validation.
+ *
+ * Two very different jobs live here, and they use two very different
+ * algorithms on purpose:
+ *
+ * 1. **Path finding** (`solveLevel`, `solveFromState`) materialises actual
+ *    stitch sequences. Hints need one real continuation, so this stays
+ *    path-based — but it is always called with a small `limit`.
+ * 2. **Counting and reachability** (`countSolutions`, `analyzeStranding`)
+ *    never build a path. They memoise over the state
+ *    `(current hole, active side, used-edge set)`, which turns an exponential
+ *    walk over *paths* into a linear walk over *states*. Counting a level with
+ *    a million solutions costs the same as counting one with two.
+ *
+ * Counting is exact unless it hits an explicit budget, and it says so:
+ * `SolutionCount.exact` is never true for a truncated answer. Nothing in this
+ * file reports a capped number as an exact one.
+ */
 import type { GameState, Level, Side, StitchEdge } from "./types.ts";
 
 export type ValidationIssue = {
@@ -12,11 +31,46 @@ export type SolverResult = {
   truncated: boolean;
 };
 
+/**
+ * An exact-or-honestly-capped count of complete alternating trails.
+ *
+ * `exact` is true only when the whole state space was explored and the count
+ * never reached `cap`. When `exact` is false, `count` is a lower bound.
+ */
+export type SolutionCount = {
+  count: number;
+  exact: boolean;
+  /** The count ceiling that was applied. */
+  cap: number;
+  /** Distinct memoised states visited. The real cost driver. */
+  statesVisited: number;
+  /** True when the state budget stopped the walk early. */
+  stateBudgetExceeded: boolean;
+};
+
+/** Exact reachability facts that need no path materialised. */
+export type StrandingAnalysis = {
+  /** Distinct reachable states with no legal unused stitch and no completion. */
+  deadEndStates: number;
+  /** True when at least one dead end is reachable from the start. */
+  canStrand: boolean;
+  statesVisited: number;
+};
+
 export type LevelValidation = {
   valid: boolean;
   issues: ValidationIssue[];
-  solver: SolverResult;
+  solutions: SolutionCount;
+  stranding: StrandingAnalysis;
 };
+
+/**
+ * Default ceilings for authoring tools. A production hoop that trips either of
+ * these is a design smell, not a tooling limit — but the tool reports the cap
+ * truthfully instead of hanging or lying.
+ */
+export const DEFAULT_SOLUTION_CAP = 1_000_000;
+export const DEFAULT_STATE_BUDGET = 2_000_000;
 
 export function oppositeSide(side: Side): Side {
   return side === "front" ? "back" : "front";
@@ -48,6 +102,12 @@ function matchingUnusedEdges(
   );
 }
 
+/**
+ * Enumerate up to `limit` complete solution *paths*. Only use this when the
+ * actual stitch sequence is needed (hints, tests). For counts, uniqueness, or
+ * reachability, use `countSolutions` / `analyzeStranding` instead — they are
+ * state-memoised and do not blow up on dense hoops.
+ */
 export function solveLevel(level: Level, limit = Number.POSITIVE_INFINITY): SolverResult {
   return solveFromPosition(level, level.startHole, level.startSide, new Set(), [level.startHole], limit);
 }
@@ -107,6 +167,131 @@ function solveFromPosition(
 
   visit(currentHole, activeSide, usedAtStart, pathAtStart);
   return { solutions, solutionCount: solutions.length, deadEndCount, truncated };
+}
+
+/**
+ * Compact edge table shared by the counting and reachability passes.
+ *
+ * A state is `(current hole, active side, used-edge set)`. The used-edge set is
+ * a bitmask over target-edge indices, so a state key is a short string and no
+ * per-branch array copying happens. Because the mask only ever grows, the state
+ * graph is acyclic and plain memoisation is sound.
+ */
+type EdgeTable = {
+  count: number;
+  side: Side[];
+  from: string[];
+  to: string[];
+};
+
+function edgeTable(level: Level): EdgeTable {
+  const edges = targetEdges(level);
+  return {
+    count: edges.length,
+    side: edges.map((edge) => edge.side),
+    from: edges.map((edge) => edge.from),
+    to: edges.map((edge) => edge.to)
+  };
+}
+
+function legalEdgeIndices(table: EdgeTable, hole: string, side: Side, used: bigint): number[] {
+  const matches: number[] = [];
+  for (let index = 0; index < table.count; index += 1) {
+    if (((used >> BigInt(index)) & 1n) === 1n) continue;
+    if (table.side[index] !== side) continue;
+    if (table.from[index] === hole || table.to[index] === hole) matches.push(index);
+  }
+  return matches;
+}
+
+function stateKeyOf(side: Side, hole: string, used: bigint): string {
+  return `${side}:${hole}:${used.toString(36)}`;
+}
+
+/**
+ * Count every complete alternating trail from the level's start, without ever
+ * building a path.
+ *
+ * Exactness contract: `count` is exact when `exact` is true. It is a lower
+ * bound when the count reached `cap` or the state budget ran out, and `exact`
+ * is false in both cases. Callers that need certainty (validation, uniqueness)
+ * must check `exact`.
+ */
+export function countSolutions(
+  level: Level,
+  cap: number = DEFAULT_SOLUTION_CAP,
+  stateBudget: number = DEFAULT_STATE_BUDGET
+): SolutionCount {
+  const table = edgeTable(level);
+  const full = table.count;
+  const memo = new Map<string, number>();
+  let budgetExceeded = false;
+
+  function visit(hole: string, side: Side, used: bigint, depth: number): number {
+    if (depth === full) return 1;
+    const key = stateKeyOf(side, hole, used);
+    const cached = memo.get(key);
+    if (cached !== undefined) return cached;
+    if (memo.size >= stateBudget) {
+      budgetExceeded = true;
+      return 0;
+    }
+
+    let total = 0;
+    for (const index of legalEdgeIndices(table, hole, side, used)) {
+      const next = table.from[index] === hole ? table.to[index] : table.from[index];
+      total += visit(next, oppositeSide(side), used | (1n << BigInt(index)), depth + 1);
+      if (total >= cap) {
+        total = cap;
+        break;
+      }
+    }
+
+    memo.set(key, total);
+    return total;
+  }
+
+  const count = visit(level.startHole, level.startSide, 0n, 0);
+  return {
+    count,
+    exact: !budgetExceeded && count < cap,
+    cap,
+    statesVisited: memo.size,
+    stateBudgetExceeded: budgetExceeded
+  };
+}
+
+/**
+ * Exhaustively find whether the thread can be stranded, and how many distinct
+ * stranded states exist. Memoised over states, so it stays cheap even where
+ * enumerating dead-end *paths* would explode.
+ */
+export function analyzeStranding(level: Level, stateBudget: number = DEFAULT_STATE_BUDGET): StrandingAnalysis {
+  const table = edgeTable(level);
+  const full = table.count;
+  const seen = new Set<string>();
+  const deadEnds = new Set<string>();
+
+  function visit(hole: string, side: Side, used: bigint, depth: number): void {
+    const key = stateKeyOf(side, hole, used);
+    if (seen.has(key)) return;
+    if (seen.size >= stateBudget) return;
+    seen.add(key);
+    if (depth === full) return;
+
+    const moves = legalEdgeIndices(table, hole, side, used);
+    if (moves.length === 0) {
+      deadEnds.add(key);
+      return;
+    }
+    for (const index of moves) {
+      const next = table.from[index] === hole ? table.to[index] : table.from[index];
+      visit(next, oppositeSide(side), used | (1n << BigInt(index)), depth + 1);
+    }
+  }
+
+  visit(level.startHole, level.startSide, 0n, 0);
+  return { deadEndStates: deadEnds.size, canStrand: deadEnds.size > 0, statesVisited: seen.size };
 }
 
 function structuralIssues(level: Level): ValidationIssue[] {
@@ -200,31 +385,58 @@ function authoredSolutionIssues(level: Level): ValidationIssue[] {
   return issues;
 }
 
+/**
+ * Exact authoring validation.
+ *
+ * The authored solution is still checked stitch by stitch — that has to stay
+ * exact and it costs nothing. Solution counting is capped one above the
+ * authored expectation, which is all that is needed to tell "exactly N" from
+ * "more than N", and dead-end intent is checked by exhaustive *state*
+ * reachability rather than by enumerating dead-end paths.
+ */
 export function validateLevel(level: Level): LevelValidation {
   const issues = structuralIssues(level);
+  const emptyCount: SolutionCount = { count: 0, exact: true, cap: 0, statesVisited: 0, stateBudgetExceeded: false };
+  const emptyStranding: StrandingAnalysis = { deadEndStates: 0, canStrand: false, statesVisited: 0 };
   if (issues.some((issue) => ["INVALID_EDGE_HOLE", "SELF_LOOP", "DUPLICATE_EDGE", "INVALID_START_HOLE"].includes(issue.code))) {
-    return { valid: false, issues, solver: { solutions: [], solutionCount: 0, deadEndCount: 0, truncated: false } };
+    return { valid: false, issues, solutions: emptyCount, stranding: emptyStranding };
   }
 
   issues.push(...authoredSolutionIssues(level));
-  const solver = solveLevel(level, level.expectedSolutionCount + 1);
-  if (solver.solutionCount === 0) {
+
+  const cap = Math.max(2, level.expectedSolutionCount + 1);
+  const solutions = countSolutions(level, cap);
+  const stranding = analyzeStranding(level);
+
+  if (solutions.stateBudgetExceeded) {
+    issues.push({
+      code: "STATE_BUDGET_EXCEEDED",
+      message: "Level exceeded the analyzer state budget; its solution count is a lower bound, not an exact figure."
+    });
+  }
+  if (solutions.count === 0) {
     issues.push({ code: "UNSOLVABLE", message: "No alternating trail uses every target edge from the required start." });
   }
-  if (solver.solutionCount !== level.expectedSolutionCount || solver.truncated) {
-    const actual = solver.truncated ? `more than ${level.expectedSolutionCount}` : `${solver.solutionCount}`;
-    issues.push({ code: "SOLUTION_COUNT_MISMATCH", message: `Level expects ${level.expectedSolutionCount} solution(s), but the solver found ${actual}.` });
+  if (solutions.count !== level.expectedSolutionCount) {
+    const actual = solutions.exact ? `${solutions.count}` : `at least ${solutions.count}`;
+    issues.push({
+      code: "SOLUTION_COUNT_MISMATCH",
+      message: `Level expects ${level.expectedSolutionCount} solution(s), but the solver found ${actual}.`
+    });
   }
-  if (level.unique && (solver.solutionCount !== 1 || solver.truncated)) {
+  if (level.unique && (solutions.count !== 1 || !solutions.exact)) {
     issues.push({ code: "NOT_UNIQUE", message: "Level is marked unique, but it does not have exactly one solution." });
   }
-  if (!level.allowDeadEnds && solver.deadEndCount > 0) {
-    issues.push({ code: "UNEXPECTED_DEAD_END", message: `The solver found ${solver.deadEndCount} legal path(s) that dead-end before completion.` });
+  if (!level.allowDeadEnds && stranding.canStrand) {
+    issues.push({
+      code: "UNEXPECTED_DEAD_END",
+      message: `The solver found ${stranding.deadEndStates} reachable state(s) where the thread strands before completion.`
+    });
   }
-  if (level.allowDeadEnds && solver.deadEndCount === 0) {
+  if (level.allowDeadEnds && !stranding.canStrand) {
     issues.push({ code: "MISSING_BRANCH", message: "This level is meant to teach recovery, but no dead-end branch exists." });
   }
-  return { valid: issues.length === 0, issues, solver };
+  return { valid: issues.length === 0, issues, solutions, stranding };
 }
 
 export function assertValidLevel(level: Level): Level {

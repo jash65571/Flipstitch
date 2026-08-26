@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { guidanceFor } from "./engine.ts";
-import { levels } from "./levels.ts";
+import { levels } from "../content/catalog.ts";
 import type { Level } from "./types.ts";
 
 test("levels 1 and 2 keep full guidance", () => {

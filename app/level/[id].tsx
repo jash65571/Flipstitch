@@ -4,7 +4,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useFeedback } from "@/feedback/FeedbackProvider";
-import { getLevel, getLevelIndex, levels } from "@/game/levels";
+import { getLevel } from "@/content/catalog";
+import { getLevelContext } from "@/content/navigation";
 import { LevelVisit, makeAttemptId } from "@/playtest/attempt";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { useProgress } from "@/progress/ProgressProvider";
@@ -16,7 +17,9 @@ export default function LevelRoute() {
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const levelId = Array.isArray(params.id) ? params.id[0] : params.id;
   const level = levelId ? getLevel(levelId) : undefined;
-  const index = level ? getLevelIndex(level.id) : -1;
+  // One source of truth for position: chapter, collection, previous, and next
+  // all come from the content layer. This route never indexes a level array.
+  const context = level ? getLevelContext(level.id) : undefined;
   const { loading, isUnlocked, completeLevel, startLevel } = useProgress();
   const feedback = useFeedback();
   const playtest = usePlaytest();
@@ -77,22 +80,22 @@ export default function LevelRoute() {
     );
   }
 
-  if (!level || !isUnlocked(level.id)) {
+  if (!level || !context || !isUnlocked(level.id)) {
     return <Redirect href="/" />;
   }
   const currentLevel = level;
+  const currentContext = context;
 
-  function openLevel(nextIndex: number) {
-    const next = levels[nextIndex];
-    if (!next) {
+  function openLevelById(nextId: string | null, isForwardStep: boolean) {
+    if (!nextId) {
       router.replace("/");
       return;
     }
-    startLevel(next.id);
-    if (nextIndex === index + 1) {
-      playtest.track({ name: "next_level_started", levelId: next.id });
+    startLevel(nextId);
+    if (isForwardStep) {
+      playtest.track({ name: "next_level_started", levelId: nextId });
     }
-    router.replace({ pathname: "/level/[id]", params: { id: next.id } });
+    router.replace({ pathname: "/level/[id]", params: { id: nextId } });
   }
 
   function handleComplete(moves: number) {
@@ -103,7 +106,7 @@ export default function LevelRoute() {
       playtest.track({ ...completed, moveCount: moves });
     }
     completeLevel(currentLevel.id, moves);
-    if (index < levels.length - 1) {
+    if (currentContext.nextLevelId) {
       // Linear unlocking means completing level N unlocks N+1 in this moment.
       feedback.emit("levelUnlocked");
     }
@@ -123,13 +126,15 @@ export default function LevelRoute() {
     <GameScreen
       key={level.id}
       level={level}
-      levelNumber={index + 1}
-      hasPrevious={index > 0}
-      hasNext={index < levels.length - 1}
+      levelNumber={context.levelNumber}
+      chapterTitle={context.chapter.title}
+      collectionTitle={context.collection.title}
+      hasPrevious={context.previousLevelId !== null}
+      hasNext={context.nextLevelId !== null}
       attemptId={attemptId}
       onExit={() => router.replace("/")}
-      onPrevious={() => openLevel(index - 1)}
-      onNext={() => openLevel(index + 1)}
+      onPrevious={() => openLevelById(currentContext.previousLevelId, false)}
+      onNext={() => openLevelById(currentContext.nextLevelId, true)}
       onRestart={handleRestart}
       onComplete={handleComplete}
     />

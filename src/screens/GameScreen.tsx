@@ -26,6 +26,10 @@ type ToolName = "undo" | "preview" | "hint";
 type GameScreenProps = {
   level: Level;
   levelNumber: number;
+  /** Chapter title, from the content layer. Never hard-coded in a screen. */
+  chapterTitle: string;
+  /** Collection title, from the content layer. */
+  collectionTitle: string;
   hasPrevious: boolean;
   hasNext: boolean;
   /** Playtest attempt id for the current play-through; events are stamped with it. */
@@ -80,6 +84,8 @@ function openingMessage(level: Level): string {
 export function GameScreen({
   level,
   levelNumber,
+  chapterTitle,
+  collectionTitle,
   hasPrevious,
   hasNext,
   attemptId,
@@ -374,7 +380,7 @@ export function GameScreen({
       <View style={styles.header}>
         <View style={styles.titleBlock}>
           <Text maxFontSizeMultiplier={1.6} style={styles.collection}>
-            {level.collection}
+            {collectionTitle} · {chapterTitle}
           </Text>
           <Text maxFontSizeMultiplier={1.6} style={[styles.title, compact && styles.titleCompact]}>
             {level.title}

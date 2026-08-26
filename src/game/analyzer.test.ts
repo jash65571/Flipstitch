@@ -2,14 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { analyzeLevel, difficultyScore, measureLevel, tierForScore } from "./analyzer.ts";
-import { levels } from "./levels.ts";
+import { levels } from "../content/catalog.ts";
 import type { Level } from "./types.ts";
 
 /** A three-stitch straight chain with zero decisions at any step. */
 const forcedChain: Level = {
   id: "forced-chain",
   title: "Forced Chain",
-  collection: "test",
   difficulty: "Gentle",
   startSide: "front",
   startHole: "a",
@@ -34,7 +33,6 @@ const forcedChain: Level = {
 const forkWithTrap: Level = {
   id: "fork-with-trap",
   title: "Fork",
-  collection: "test",
   difficulty: "Moderate",
   startSide: "front",
   startHole: "a",

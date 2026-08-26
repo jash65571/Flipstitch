@@ -14,7 +14,8 @@ The current board uses SVG for fast iteration. The production-slice audit kept S
 app/                  Routes and screen entry points
 src/screens/          Screen composition and input flow
 src/components/       Renderers and reusable controls
-src/game/             Pure rules, level data, solver-ready types
+src/game/             Pure rules, solver, analyzer, synthetic scale fixtures
+src/content/          Content hierarchy: catalog, navigation, chapter pacing
 src/progress/         Versioned local progress model and storage boundary
 src/feedback/         Semantic feedback mapping, audio, and haptic services
 src/settings/         Versioned sound/haptic preferences and storage boundary
@@ -33,17 +34,71 @@ A level is an alternating-edge trail across one set of physical holes. Each requ
 
 That model gives us deterministic validation, hints, undo, replay, and future procedural generation.
 
+## Content hierarchy
+
+`src/content/` owns everything about *where a level lives*:
+
+```text
+Catalog -> Collection -> Chapter -> ChapterEntry -> Level
+```
+
+A `Level` (in `src/game/types.ts`) describes only the puzzle. It carries no
+collection, chapter, position, or progression role; the `collection: string`
+display field was removed in Prompt 7. A `ChapterEntry` pairs a level with its
+`PacingRole`, the curriculum concepts it teaches, and an optional `pacingNote`.
+
+`catalog.ts` assembles the deterministic flat play order (collections by
+`order`, chapters by `order`, entries as authored) and throws at import time on
+duplicate collection/chapter/level ids, non-ascending order, empty units, or a
+capstone that is not a chapter's last level. `navigation.ts` is the only source
+of previous/next/resume and chapter/collection progress; screens never index the
+level array. `pacing.ts` validates chapter pacing, separating hard invariants
+(which fail the build) from design warnings (which do not).
+
+`src/content/` imports no storage and no progress module — completion is passed
+in as a predicate — so the whole content layer is pure and testable in Node.
+
+Full detail: `docs/CONTENT-ARCHITECTURE.md` and `docs/PROGRESSION-PACING.md`.
+
 ## Solver and validation
 
-`src/game/solver.ts` performs depth-first enumeration over unused, side-labeled edges. Solver state contains only the current hole, active side, used edge keys, and path. It has no React Native, Expo, SVG, or storage imports.
+`src/game/solver.ts` holds two deliberately different algorithms.
 
-Validation rejects missing holes, self-loops, same-side duplicate edges, wrong solution starts, broken side alternation, edge reuse, incomplete authored paths, unsolvable graphs, and unexpected solution counts. Levels marked unique must produce exactly one full trail. Levels that teach recovery declare whether dead-end branches are intended, so accidental traps fail authoring checks while planned backtracking remains measurable.
+**Path finding** (`solveLevel`, `solveFromState`) enumerates real stitch
+sequences and is used where an actual path is needed — hints, tests. It is
+always called with a small limit.
+
+**Counting and reachability** (`countSolutions`, `analyzeStranding`) never build
+a path. They memoise over the state `(current hole, active side, used-edge set)`
+— a bitmask over target-edge indices — which turns an exponential walk over
+*paths* into a linear walk over *states*. `analyzeLevel` folds solution counting
+into its single state walk for the same reason.
+
+Exactness is explicit, never assumed: `SolutionCount.exact` and
+`LevelMetrics.solutionCountExact` / `exhaustive` are false whenever a count cap
+or state budget was hit, and the reported figure is then a lower bound. Nothing
+labels a partial answer as exact. Solver state contains no React Native, Expo,
+SVG, or storage imports.
+
+`src/game/synthetic.ts` provides tooling-only fixtures (forced chain, N-petal
+hub, hub-plus-runner) whose branching grows on a dial. They are never registered
+in the catalog; they exist so `npm run bench:analyzer` and
+`src/game/analyzer-scale.test.ts` can measure authoring-tool behaviour on hoops
+far denser than anything shipped.
+
+Validation rejects missing holes, self-loops, same-side duplicate edges, wrong solution starts, broken side alternation, edge reuse, incomplete authored paths, unsolvable graphs, and unexpected solution counts. Authored-solution checking stays exact and stitch-by-stitch; solution counting is capped one above the authored expectation, which is all that is needed to tell "exactly N" from "more than N"; dead-end intent is checked by exhaustive state reachability rather than by enumerating dead-end paths. Levels marked unique must produce exactly one full trail. Levels that teach recovery declare whether dead-end branches are intended, so accidental traps fail authoring checks while planned backtracking remains measurable.
 
 ## Local progression
 
 `src/progress/model.ts` is a pure, versioned progress reducer. It stores completed level IDs, best move counts, and the last played level. `ProgressProvider` is the only Async Storage boundary. Corrupt or stale data falls back to a fresh state, and storage failure never blocks offline play.
 
-Unlocking is linear and derived from contiguous completed levels. A completion unlocks the next hoop, every prior hoop remains replayable, and the gallery resumes at the last useful unlocked level.
+Unlocking is linear and derived from contiguous completed levels in the catalog's flat play order, so it crosses chapter and collection boundaries seamlessly. A completion unlocks the next hoop, every prior hoop remains replayable, and the gallery resumes at the last useful unlocked level.
+
+`PROGRESS_VERSION` remains **1**. The Prompt 7 content refactor kept every level
+id and its position, so the storage schema did not change and no migration was
+needed or written. `src/progress/model.test.ts` proves it, loading hard-coded
+version-1 payloads (including one spanning the new chapter seam) rather than
+re-serialising current code.
 
 ## Feedback, sound, and haptics
 

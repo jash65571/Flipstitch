@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { createGame, nextHint, playMove, undoMove } from "./engine.ts";
-import { levels } from "./levels.ts";
+import { levels } from "../content/catalog.ts";
 import { emptyProgress, isLevelUnlocked, readProgress, recordCompletion } from "../progress/model.ts";
 
 test("the full ten-level collection unlocks, persists, and completes in order", () => {

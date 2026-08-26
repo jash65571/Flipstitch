@@ -137,6 +137,25 @@ Wordmark stitch mark and the completion seal. Rules:
 
 ## 9. Non-negotiables
 
-Do not add: new collections/levels, daily puzzles, streaks, ads, purchases,
-accounts, cloud saves, external analytics, cosmetics, social sharing, a new
-mechanic, or a solver rewrite. Do not remove accessibility to create difficulty.
+**Permanent.** Do not add: daily puzzles, streaks, ads, purchases, accounts,
+cloud saves, external analytics, cosmetics, social sharing, or a new core
+mechanic. Do not remove accessibility to create difficulty. Do not reintroduce
+dashboard cards, generic level grids, glass, neon, emoji identity, black CTA
+slabs, random gradients, confetti, or coins.
+
+**Milestone-scoped, now lifted.** "Do not add new collections/levels" and "do
+not rewrite the solver" were *Prompt 5 and 6* constraints, meant to stop a
+design milestone from turning into a content or engine milestone. They are not
+permanent product rules and must not block future work:
+
+- New collections and chapters are the entire point of the Prompt 7 content
+  architecture (`docs/CONTENT-ARCHITECTURE.md`). Adding them is expected; they
+  must pass catalog integrity and chapter pacing validation.
+- The solver was extended in Prompt 7 (memoised counting, exhaustive stranding
+  analysis) with exact behaviour preserved and regression-tested.
+
+**Visual grammar for chapters.** A chapter is a *seam in the cloth*, not a new
+screen. The gallery's running thread passes straight through a chapter divider;
+the divider carries a stitched chapter mark, a Fraunces title, one line of
+subtitle, and a brass count. A finished chapter takes the same completion seal
+a finished hoop does. No chapter tabs, no carousels, no separate chapter screen.

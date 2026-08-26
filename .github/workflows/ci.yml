@@ -32,6 +32,9 @@ jobs:
       - name: Check TypeScript
         run: npm run typecheck
 
+      - name: Measure levels and validate chapter pacing
+        run: npm run analyze:levels
+
       - name: Check Expo project health
         run: npm run doctor
 

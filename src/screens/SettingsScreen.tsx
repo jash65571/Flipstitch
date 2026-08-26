@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useFeedback } from "@/feedback/FeedbackProvider";
 import { Icon, type IconName } from "@/components/Icon";
-import { levels } from "@/game/levels";
+import { levels } from "@/content/catalog";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { buildPlaytestReport, formatReadableReport } from "@/playtest/report";
 import { useProgress } from "@/progress/ProgressProvider";

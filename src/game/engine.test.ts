@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { availableNodes, createGame, edgeKey, nextHint, playMove, progress, undoMove } from "./engine.ts";
-import { levelOne } from "./level-one.ts";
+import { levelOne } from "../content/catalog.ts";
 
 test("a stitch moves the needle and forces the opposite side", () => {
   const initial = createGame(levelOne);

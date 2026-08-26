@@ -6,11 +6,20 @@ every valid stitch forces the player onto the opposite side.** That rule is
 the game. Difficulty must come from planning the thread path across the two
 sides — never from worse controls, hidden information, timers, or randomness.
 
-This guide pairs with three tools:
+This guide pairs with these tools:
 
 - `src/game/analyzer.ts` — pure, deterministic measurement of any level.
-- `scripts/analyze-levels.mjs` — prints the whole collection's measurements.
-- `src/game/difficulty.test.ts` — regression tests that protect the curve.
+- `npm run analyze:levels` — measures every level once and prints the matrix
+  plus the chapter pacing findings. Exits non-zero on a pacing invariant.
+- `npm run bench:analyzer` — authoring-tool performance on the catalog and on
+  synthetic fixtures far denser than any shipped hoop.
+- `src/game/difficulty.test.ts` — pins Collection 01's measured curve.
+- `src/content/pacing.ts` — the chapter pacing rules (invariants and warnings).
+
+**Where a level lives is not part of the level.** Since Prompt 7 a `Level`
+carries no collection, chapter, position, or progression role. Authoring a
+level means writing the puzzle here and then placing it in a chapter file under
+`src/content/collections/`. See `docs/CONTENT-ARCHITECTURE.md`.
 
 ---
 
@@ -75,8 +84,15 @@ leads (immediately or later) to a doomed state. The analyzer counts both.
 
 Design rule: **dangerous decisions must always have at least one safe
 alternative.** If every option strands, the level is a lottery, not a puzzle.
-The analyzer reports `safeAlternativeCount` per level; keep it ≥ 1 on every
-trap level.
+The analyzer reports `safeAlternativeCount` per level: **safe stitches offered
+at dangerous-decision states**. Keep it ≥ 1 on every trap level.
+
+Read that definition carefully — it changed in Prompt 7. It counts safe options
+*where a wrong turn is actually possible*, so a level with no danger at all
+correctly reports 0 rather than reporting "alternatives" to nothing. Before the
+fix it counted safe stitches at every decision, which made trap-free levels look
+as if they had escape routes. Regression-tested in
+`src/game/analyzer-scale.test.ts`.
 
 ---
 
@@ -293,11 +309,22 @@ Before shipping any level, it must pass:
   `UNSOLVABLE` never, `unique` means exactly one).
 - **`measureLevel(level)`** — the level's metrics land in the tier it claims,
   and `canTrap` matches `allowDeadEnds`.
-- **The collection checks** in `src/game/difficulty.test.ts` — the new level
-  must not flatten the curve.
+- **The chapter pacing checks** in `src/content/pacing.ts` — the new level must
+  not violate a pacing invariant in the chapter it is placed in (capstone stays
+  the peak, guidance never strengthens, a big drop carries an authored reason).
+  Run them with `npm run analyze:levels`.
+- **The catalog integrity checks** in `src/content/catalog.test.ts` — unique
+  ids, one chapter per level, deterministic order.
 
-Every production level runs through `assertValidLevel` at import time
-(`src/game/levels.ts`), so an invalid level breaks the build immediately.
+Every production level runs through `assertValidLevel` at import time in its
+chapter file (`src/content/collections/**`), so an invalid level breaks the
+build immediately.
+
+Note the validator no longer enumerates solution *paths* to count them. It uses
+`countSolutions`, which memoises over states and is exact unless it says
+otherwise (`SolutionCount.exact`). Dead-end intent is checked by
+`analyzeStranding`, an exhaustive state reachability walk, which is both exact
+and far cheaper than enumerating dead-end paths.
 
 ## 14. Testing intended solutions
 
@@ -368,7 +395,10 @@ Authoring rules:
 
 ## 19. Checklist before a level ships
 
-- [ ] `validateLevel` passes (structure, solution, counts, uniqueness).
+- [ ] `validateLevel` passes (structure, solution, counts, uniqueness), and its
+      `solutions.exact` is true — a capped count is not a validated count.
+- [ ] The level is placed in a chapter with a `role` and a `teaches` list.
+- [ ] `npm run analyze:levels` reports no pacing invariant violation.
 - [ ] `measureLevel` metrics match the authored tier label.
 - [ ] The curve still rises (no level easier than its predecessor).
 - [ ] Tutorials (1–2): full guidance, no trap, ≥ 1 safe choice.
