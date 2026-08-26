@@ -8,41 +8,69 @@ import { levels } from "@/game/levels";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { buildPlaytestReport, formatReadableReport } from "@/playtest/report";
 import { useProgress } from "@/progress/ProgressProvider";
+import {
+  confirmExpired,
+  confirmFinished,
+  initialConfirmState,
+  pressConfirm,
+  type ConfirmState
+} from "@/settings/confirm";
 import { useSettings } from "@/settings/SettingsProvider";
 import { colors, radius, space, type } from "@/theme/tokens";
+
+const CONFIRM_ARM_MS = 4000;
 
 type ConfirmButtonProps = {
   label: string;
   confirmLabel: string;
   tone?: "default" | "danger";
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 };
 
-function ConfirmButton({ label, confirmLabel, tone = "default", onConfirm }: ConfirmButtonProps) {
-  const [armed, setArmed] = useState(false);
+function ConfirmButton({ label, confirmLabel, tone = "danger", onConfirm }: ConfirmButtonProps) {
+  const [state, setState] = useState<ConfirmState>(initialConfirmState);
+
+  // Clear the armed timer when the component unmounts or the button is
+  // re-created, so no stale timeout can flip state after teardown.
+  useEffect(() => {
+    if (!state.armed) return;
+    const timer = setTimeout(() => setState(confirmExpired), CONFIRM_ARM_MS);
+    return () => clearTimeout(timer);
+  }, [state.armed]);
+
+  function handlePress() {
+    const next = pressConfirm(state);
+    setState(next);
+    if (!state.armed || state.busy) return;
+    void Promise.resolve(onConfirm()).finally(() => setState(confirmFinished));
+  }
+
+  const busy = state.busy;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={armed ? confirmLabel : label}
-      accessibilityHint={armed ? "Tap again to confirm" : undefined}
-      onPress={() => {
-        if (!armed) {
-          setArmed(true);
-          setTimeout(() => setArmed(false), 4000);
-          return;
-        }
-        setArmed(false);
-        onConfirm();
-      }}
+      accessibilityLabel={busy ? "Working…" : state.armed ? confirmLabel : label}
+      accessibilityHint={state.armed && !busy ? "Tap again to confirm" : undefined}
+      accessibilityState={{ busy, disabled: busy }}
+      disabled={busy}
+      onPress={handlePress}
       style={({ pressed }) => [
         styles.confirmButton,
         tone === "danger" && styles.confirmButtonDanger,
-        armed && styles.confirmButtonArmed,
-        pressed && styles.confirmPressed
+        state.armed && styles.confirmButtonArmed,
+        busy && styles.confirmButtonBusy,
+        pressed && !busy && styles.confirmPressed
       ]}
     >
-      <Text maxFontSizeMultiplier={1.5} style={[styles.confirmButtonText, tone === "danger" && styles.confirmButtonTextDanger]}>
-        {armed ? confirmLabel : label}
+      <Text
+        maxFontSizeMultiplier={1.5}
+        style={[
+          styles.confirmButtonText,
+          tone === "danger" && !state.armed && styles.confirmButtonTextDanger,
+          state.armed && styles.confirmButtonTextArmed
+        ]}
+      >
+        {busy ? "Working…" : state.armed ? confirmLabel : label}
       </Text>
     </Pressable>
   );
@@ -304,10 +332,14 @@ const styles = StyleSheet.create({
   actionButtonText: { color: colors.ink, fontFamily: type.bodyBold, fontSize: 11 },
   confirmButton: { minHeight: 48, paddingHorizontal: 14, alignItems: "center", justifyContent: "center", backgroundColor: colors.white, borderWidth: 1, borderColor: colors.linenShadow, borderRadius: radius.pill },
   confirmButtonDanger: { borderColor: colors.danger },
-  confirmButtonArmed: { backgroundColor: colors.danger },
+  // Armed state: white text on the danger fill (WCAG AA contrast), never
+  // dark-red text on a dark-red background.
+  confirmButtonArmed: { backgroundColor: colors.danger, borderColor: colors.danger },
+  confirmButtonBusy: { opacity: 0.6 },
   confirmPressed: { opacity: 0.85 },
   confirmButtonText: { color: colors.ink, fontFamily: type.bodyBold, fontSize: 12 },
   confirmButtonTextDanger: { color: colors.danger },
+  confirmButtonTextArmed: { color: colors.white },
   dataPanel: { marginTop: space.md, padding: space.sm, backgroundColor: colors.linenDeep, borderRadius: radius.sm },
   dataPanelLabel: { color: colors.tealDeep, fontFamily: type.bodyBold, fontSize: 9, letterSpacing: 1.1 },
   dataPanelText: { marginTop: 6, color: colors.ink, fontFamily: type.body, fontSize: 11, lineHeight: 16 },
