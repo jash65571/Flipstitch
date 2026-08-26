@@ -27,9 +27,13 @@ type GameScreenProps = {
   levelNumber: number;
   hasPrevious: boolean;
   hasNext: boolean;
+  /** Playtest attempt id for the current play-through; events are stamped with it. */
+  attemptId: string | null;
   onExit: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  /** Restart/replay: the route closes the current attempt and starts a new one. */
+  onRestart: () => void;
   onComplete: (moves: number) => void;
 };
 
@@ -97,9 +101,11 @@ export function GameScreen({
   levelNumber,
   hasPrevious,
   hasNext,
+  attemptId,
   onExit,
   onPrevious,
   onNext,
+  onRestart,
   onComplete
 }: GameScreenProps) {
   const { width, height, fontScale } = useWindowDimensions();
@@ -244,6 +250,7 @@ export function GameScreen({
       playtest.track({
         name: "invalid_stitch",
         levelId: level.id,
+        attemptId: attemptId ?? undefined,
         activeSide: game.activeSide,
         moveCount: placedStitchCount,
         invalidReason: result.reason
@@ -256,6 +263,7 @@ export function GameScreen({
     playtest.track({
       name: placedStitchCount === 0 ? "first_valid_stitch" : "valid_stitch",
       levelId: level.id,
+      attemptId: attemptId ?? undefined,
       activeSide: game.activeSide,
       moveCount: nextMoveCount
     });
@@ -275,7 +283,6 @@ export function GameScreen({
 
     if (result.completedNow) {
       feedback.emit("levelCompleted");
-      playtest.trackOnce({ name: "level_completed", levelId: level.id, moveCount: nextMoveCount, completed: true });
       onComplete(nextMoveCount);
     }
   }
@@ -289,7 +296,7 @@ export function GameScreen({
       say("Stitch removed. The needle and side are restored.");
     });
     feedback.emit("undo");
-    playtest.track({ name: "undo_used", levelId: level.id, moveCount: placedStitchCount });
+    playtest.track({ name: "undo_used", levelId: level.id, attemptId: attemptId ?? undefined, moveCount: placedStitchCount });
   }
 
   function handlePreview() {
@@ -299,7 +306,7 @@ export function GameScreen({
       setHintNode(null);
       feedback.emit("sideChanged");
     });
-    playtest.track({ name: "preview_used", levelId: level.id });
+    playtest.track({ name: "preview_used", levelId: level.id, attemptId: attemptId ?? undefined });
   }
 
   function handleHint() {
@@ -309,7 +316,7 @@ export function GameScreen({
     setHintNode(hint);
     say(hint ? `Hole ${hint.toUpperCase()} keeps a full solution open.` : "This path is blocked. Undo the last stitch and try another branch.");
     feedback.emit("hint");
-    playtest.track({ name: "hint_used", levelId: level.id });
+    playtest.track({ name: "hint_used", levelId: level.id, attemptId: attemptId ?? undefined });
   }
 
   function handleRestart() {
@@ -319,7 +326,7 @@ export function GameScreen({
     setPlacedStitchCount(0);
     progressValue.setValue(0);
     say(level.hintText ?? "Fresh thread. Choose a glowing hole to begin.");
-    playtest.track({ name: "restart_used", levelId: level.id });
+    onRestart();
   }
 
   if (phoneLandscape) {

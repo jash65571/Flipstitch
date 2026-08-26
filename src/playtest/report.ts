@@ -3,16 +3,23 @@
  *
  * Calculates the milestone's playtest metrics from local events only. It never
  * invents data: every number comes from recorded events, and metrics with too
- * few sessions carry an explicit small-sample warning.
+ * few sessions or attempts carry explicit small-sample warnings.
+ *
+ * Completion and timing metrics are attempt-based. An attempt is one
+ * play-through of one level, bounded by level_opened / restart_used on the
+ * start and level_completed / level_exited / restart_used on the end (see
+ * src/playtest/attempt.ts). Version-one legacy events without attempt ids are
+ * reconstructed into inferred attempts and flagged in warnings rather than
+ * treated as precise.
  */
 
 import type { PlaytestEvent } from "./events.ts";
 
 export const MIN_SESSIONS_FOR_CONFIDENCE = 5;
-export const MIN_LEVEL_OPENS_FOR_CONFIDENCE = 5;
+export const MIN_ATTEMPTS_FOR_CONFIDENCE = 5;
 
 export type RateResult = {
-  opened: number;
+  attempts: number;
   completed: number;
   rate: number | null;
 };
@@ -33,7 +40,18 @@ export type PlaytestReport = {
   previewUsage: { total: number; perSession: number | null };
   restartUsage: { total: number; perSession: number | null };
   exitBeforeCompletionRate: { overall: number | null; byLevel: Record<string, number | null> };
+  legacyLevels: string[];
   warnings: string[];
+};
+
+type BuiltAttempt = {
+  id: string;
+  levelId: string;
+  legacy: boolean;
+  startedAt: number;
+  completedAt: number | null;
+  exitedAt: number | null;
+  firstStitchAt: number | null;
 };
 
 function median(values: number[]): number | null {
@@ -55,6 +73,96 @@ function groupBySession(events: readonly PlaytestEvent[]): Map<string, PlaytestE
     sessions.set(event.sessionId, list);
   }
   return sessions;
+}
+
+function buildAttempts(events: readonly PlaytestEvent[]): {
+  attempts: BuiltAttempt[];
+  legacyLevels: string[];
+} {
+  const attempts: BuiltAttempt[] = [];
+  const byId = new Map<string, BuiltAttempt>();
+  const activeByLevel = new Map<string, BuiltAttempt>();
+  const legacyLevels = new Set<string>();
+
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+
+  function makeAttempt(levelId: string, attemptId: string | undefined, startedAt: number): BuiltAttempt {
+    const legacy = attemptId === undefined;
+    if (legacy) legacyLevels.add(levelId);
+    const attempt: BuiltAttempt = {
+      id: attemptId ?? `legacy:${levelId}:${startedAt}`,
+      levelId,
+      legacy,
+      startedAt,
+      completedAt: null,
+      exitedAt: null,
+      firstStitchAt: null
+    };
+    attempts.push(attempt);
+    if (!legacy) byId.set(attemptId, attempt);
+    activeByLevel.set(levelId, attempt);
+    return attempt;
+  }
+
+  function attemptFor(event: PlaytestEvent): BuiltAttempt {
+    const levelId = event.levelId ?? "";
+    if (event.attemptId !== undefined && byId.has(event.attemptId)) {
+      return byId.get(event.attemptId) as BuiltAttempt;
+    }
+    if (event.attemptId !== undefined) {
+      return makeAttempt(levelId, event.attemptId, event.timestamp);
+    }
+    const active = activeByLevel.get(levelId);
+    if (active) return active;
+    return makeAttempt(levelId, undefined, event.timestamp);
+  }
+
+  for (const event of ordered) {
+    if (event.levelId === undefined) continue;
+    const levelId = event.levelId;
+
+    switch (event.name) {
+      case "level_opened": {
+        // A genuine visit always starts a fresh attempt. For legacy data an
+        // open is the boundary; for attempt-tagged data the open carries the
+        // attempt id that the rest of the visit uses.
+        makeAttempt(levelId, event.attemptId, event.timestamp);
+        break;
+      }
+      case "first_valid_stitch":
+      case "valid_stitch": {
+        const attempt = attemptFor(event);
+        if (attempt.firstStitchAt === null) attempt.firstStitchAt = event.timestamp;
+        break;
+      }
+      case "restart_used": {
+        // The restart abandons the current attempt; whatever follows begins a
+        // fresh one (a new attempt id for tagged data, a new inferred attempt
+        // for legacy data). The abandoned attempt stays in the list.
+        attemptFor(event);
+        activeByLevel.delete(levelId);
+        break;
+      }
+      case "level_exited": {
+        const attempt = attemptFor(event);
+        if (attempt.exitedAt === null) attempt.exitedAt = event.timestamp;
+        activeByLevel.delete(levelId);
+        break;
+      }
+      case "level_completed": {
+        const attempt = attemptFor(event);
+        if (attempt.completedAt === null) attempt.completedAt = event.timestamp;
+        activeByLevel.delete(levelId);
+        break;
+      }
+      default:
+        // invalid_stitch / undo_used / hint_used / preview_used associate with
+        // the active attempt; they are counted directly from events elsewhere.
+        attemptFor(event);
+    }
+  }
+
+  return { attempts, legacyLevels: [...legacyLevels] };
 }
 
 export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: readonly string[]): PlaytestReport {
@@ -85,6 +193,7 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
       previewUsage: { total: 0, perSession: null },
       restartUsage: { total: 0, perSession: null },
       exitBeforeCompletionRate: { overall: null, byLevel: {} },
+      legacyLevels: [],
       warnings
     };
   }
@@ -92,134 +201,117 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
   const levelFourIndex = 3;
   const levelFourId = levelIds[levelFourIndex];
 
-  // Per-level open/completion/stitch bookkeeping across sessions.
-  const openedByLevel = new Map<string, number>();
-  const completedByLevel = new Map<string, number>();
-  const firstStitchTimes = new Map<string, number[]>();
-  const completionTimes = new Map<string, number[]>();
+  // Direct event counts (independent of attempt reconstruction).
   const validCounts = new Map<string, number>();
   const invalidCounts = new Map<string, number>();
   const undoCounts = new Map<string, number>();
   const hintCounts = new Map<string, number>();
   const previewCounts = new Map<string, number>();
   const restartCounts = new Map<string, number>();
-  const exitCounts = new Map<string, number>();
 
-  let totalCompletedLevels = 0;
   let sessionsReachingLevelFour = 0;
-
   for (const [sessionId, sessionEvents] of sessions) {
-    const openedTimes = new Map<string, number>();
-    const sessionFirstStitch = new Map<string, number>();
-
+    if (levelFourId && sessionEvents.some((event) => event.levelId === levelFourId)) {
+      sessionsReachingLevelFour += 1;
+    }
     for (const event of sessionEvents) {
       if (event.levelId === undefined) continue;
-      const levelId = event.levelId;
-
-      if (event.name === "level_opened") {
-        openedByLevel.set(levelId, (openedByLevel.get(levelId) ?? 0) + 1);
-        if (!openedTimes.has(levelId)) openedTimes.set(levelId, event.timestamp);
-      } else if (event.name === "first_valid_stitch") {
-        // A first stitch is also a valid stitch for struggle metrics.
-        validCounts.set(levelId, (validCounts.get(levelId) ?? 0) + 1);
-        const opened = openedTimes.get(levelId);
-        if (opened !== undefined) {
-          const list = firstStitchTimes.get(levelId) ?? [];
-          list.push(Math.max(0, event.timestamp - opened));
-          firstStitchTimes.set(levelId, list);
-          sessionFirstStitch.set(levelId, event.timestamp);
-        }
-      } else if (event.name === "valid_stitch") {
-        validCounts.set(levelId, (validCounts.get(levelId) ?? 0) + 1);
-        if (!sessionFirstStitch.has(levelId)) {
-          const opened = openedTimes.get(levelId);
-          if (opened !== undefined) {
-            const list = firstStitchTimes.get(levelId) ?? [];
-            list.push(Math.max(0, event.timestamp - opened));
-            firstStitchTimes.set(levelId, list);
-            sessionFirstStitch.set(levelId, event.timestamp);
-          }
-        }
-      } else if (event.name === "invalid_stitch") {
-        invalidCounts.set(levelId, (invalidCounts.get(levelId) ?? 0) + 1);
-      } else if (event.name === "undo_used") {
-        undoCounts.set(levelId, (undoCounts.get(levelId) ?? 0) + 1);
-      } else if (event.name === "hint_used") {
-        hintCounts.set(levelId, (hintCounts.get(levelId) ?? 0) + 1);
-      } else if (event.name === "preview_used") {
-        previewCounts.set(levelId, (previewCounts.get(levelId) ?? 0) + 1);
-      } else if (event.name === "restart_used") {
-        restartCounts.set(levelId, (restartCounts.get(levelId) ?? 0) + 1);
-      } else if (event.name === "level_exited" && event.completed === false) {
-        exitCounts.set(levelId, (exitCounts.get(levelId) ?? 0) + 1);
-      } else if (event.name === "level_completed") {
-        completedByLevel.set(levelId, (completedByLevel.get(levelId) ?? 0) + 1);
-        totalCompletedLevels += 1;
-        const opened = openedTimes.get(levelId);
-        if (opened !== undefined) {
-          const list = completionTimes.get(levelId) ?? [];
-          list.push(Math.max(0, event.timestamp - opened));
-          completionTimes.set(levelId, list);
-        }
+      switch (event.name) {
+        case "first_valid_stitch":
+        case "valid_stitch":
+          validCounts.set(event.levelId, (validCounts.get(event.levelId) ?? 0) + 1);
+          break;
+        case "invalid_stitch":
+          invalidCounts.set(event.levelId, (invalidCounts.get(event.levelId) ?? 0) + 1);
+          break;
+        case "undo_used":
+          undoCounts.set(event.levelId, (undoCounts.get(event.levelId) ?? 0) + 1);
+          break;
+        case "hint_used":
+          hintCounts.set(event.levelId, (hintCounts.get(event.levelId) ?? 0) + 1);
+          break;
+        case "preview_used":
+          previewCounts.set(event.levelId, (previewCounts.get(event.levelId) ?? 0) + 1);
+          break;
+        case "restart_used":
+          restartCounts.set(event.levelId, (restartCounts.get(event.levelId) ?? 0) + 1);
+          break;
       }
     }
+  }
 
-    if (levelFourId) {
-      const reached = sessionEvents.some((event) => event.levelId === levelFourId);
-      if (reached) sessionsReachingLevelFour += 1;
-    }
+  const { attempts, legacyLevels } = buildAttempts(events);
+
+  if (legacyLevels.length > 0) {
+    warnings.push(
+      `Legacy version-one events for level(s) ${legacyLevels.join(", ")} lack attempt identity; their attempt boundaries are inferred and may be approximate.`
+    );
   }
 
   const completionRateByLevel: Record<string, RateResult> = {};
   const medianCompletionTimeMsByLevel: Record<string, number | null> = {};
   const invalidByLevel: Record<string, number | null> = {};
   const exitByLevel: Record<string, number | null> = {};
+  const firstStitchTimesByLevel = new Map<string, number[]>();
 
   for (const levelId of levelIds) {
-    const opened = openedByLevel.get(levelId) ?? 0;
-    const completed = completedByLevel.get(levelId) ?? 0;
-    completionRateByLevel[levelId] = { opened, completed, rate: ratio(completed, opened) };
-    medianCompletionTimeMsByLevel[levelId] = median(completionTimes.get(levelId) ?? []);
+    const levelAttempts = attempts.filter((a) => a.levelId === levelId);
+    const completed = levelAttempts.filter((a) => a.completedAt !== null).length;
+    const exited = levelAttempts.filter((a) => a.exitedAt !== null).length;
+    completionRateByLevel[levelId] = {
+      attempts: levelAttempts.length,
+      completed,
+      rate: ratio(completed, levelAttempts.length)
+    };
+    const completionTimes = levelAttempts
+      .filter((a) => a.completedAt !== null)
+      .map((a) => (a.completedAt as number) - a.startedAt);
+    medianCompletionTimeMsByLevel[levelId] = median(completionTimes);
+
+    const firstTimes = levelAttempts
+      .filter((a) => a.firstStitchAt !== null)
+      .map((a) => (a.firstStitchAt as number) - a.startedAt);
+    firstStitchTimesByLevel.set(levelId, firstTimes);
+
     const valid = validCounts.get(levelId) ?? 0;
     const invalid = invalidCounts.get(levelId) ?? 0;
     invalidByLevel[levelId] = ratio(invalid, valid + invalid);
-    exitByLevel[levelId] = ratio(exitCounts.get(levelId) ?? 0, opened);
+    exitByLevel[levelId] = ratio(exited, levelAttempts.length);
 
-    if (opened > 0 && opened < MIN_LEVEL_OPENS_FOR_CONFIDENCE) {
+    if (levelAttempts.length > 0 && levelAttempts.length < MIN_ATTEMPTS_FOR_CONFIDENCE) {
       warnings.push(
-        `Level ${levelId} has only ${opened} open(s) — its completion and exit metrics are small-sample.`
+        `Level ${levelId} has only ${levelAttempts.length} attempt(s) — its completion and exit metrics are small-sample.`
       );
     }
   }
 
-  const allFirstStitchTimes = [...firstStitchTimes.values()].flat();
+  const levelOneId = levelIds[0];
+  const levelOneAttempts = levelOneId ? completionRateByLevel[levelOneId]?.attempts ?? 0 : 0;
+  const levelOneCompleted = levelOneId ? completionRateByLevel[levelOneId]?.completed ?? 0 : 0;
+
+  const allFirstStitchTimes = [...firstStitchTimesByLevel.values()].flat();
   const allInvalid = [...invalidCounts.values()].reduce((a, b) => a + b, 0);
   const allValid = [...validCounts.values()].reduce((a, b) => a + b, 0);
-  const allExits = [...exitCounts.values()].reduce((a, b) => a + b, 0);
-  const allOpens = [...openedByLevel.values()].reduce((a, b) => a + b, 0);
+  const totalAttempts = attempts.length;
+  const totalExited = attempts.filter((a) => a.exitedAt !== null).length;
+  const totalCompletedLevels = attempts.filter((a) => a.completedAt !== null).length;
 
-  const levelOneId = levelIds[0];
   const totalUndos = [...undoCounts.values()].reduce((a, b) => a + b, 0);
   const totalHints = [...hintCounts.values()].reduce((a, b) => a + b, 0);
   const totalPreviews = [...previewCounts.values()].reduce((a, b) => a + b, 0);
   const totalRestarts = [...restartCounts.values()].reduce((a, b) => a + b, 0);
-
-  const firstLevelOpened = levelOneId ? (openedByLevel.get(levelOneId) ?? 0) : 0;
-  const firstLevelCompleted = levelOneId ? (completedByLevel.get(levelOneId) ?? 0) : 0;
 
   return {
     generatedAt: new Date().toISOString(),
     totalSessions,
     totalEvents: events.length,
     totalCompletedLevels,
-    percentReachingLevelFour: levelFourId
-      ? ratio(sessionsReachingLevelFour, totalSessions)
-      : null,
+    percentReachingLevelFour: levelFourId ? ratio(sessionsReachingLevelFour, totalSessions) : null,
     timeToFirstStitchMs: {
       overall: median(allFirstStitchTimes),
-      levelOne: levelOneId ? median(firstStitchTimes.get(levelOneId) ?? []) : null
+      levelOne: levelOneId ? median(firstStitchTimesByLevel.get(levelOneId) ?? []) : null
     },
-    firstLevelCompletionRate: ratio(firstLevelCompleted, firstLevelOpened),
+    firstLevelCompletionRate: ratio(levelOneCompleted, levelOneAttempts),
     completionRateByLevel,
     medianCompletionTimeMsByLevel,
     invalidMoveRate: {
@@ -231,9 +323,10 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
     previewUsage: { total: totalPreviews, perSession: ratio(totalPreviews, totalSessions) },
     restartUsage: { total: totalRestarts, perSession: ratio(totalRestarts, totalSessions) },
     exitBeforeCompletionRate: {
-      overall: ratio(allExits, allOpens),
+      overall: ratio(totalExited, totalAttempts),
       byLevel: exitByLevel
     },
+    legacyLevels,
     warnings
   };
 }
@@ -257,16 +350,16 @@ export function formatReadableReport(report: PlaytestReport, levelIds: readonly 
   lines.push(`  All levels: ${ms(report.timeToFirstStitchMs.overall)}`);
 
   lines.push("");
-  lines.push("— Completion —");
+  lines.push("— Completion (per attempt) —");
   lines.push(`  First-level completion rate: ${pct(report.firstLevelCompletionRate)}`);
   lines.push(`  Reaching level 4: ${pct(report.percentReachingLevelFour)}`);
   lines.push("  By level:");
   for (const [index, levelId] of levelIds.entries()) {
     const entry = report.completionRateByLevel[levelId];
-    const done = entry ? `${entry.completed}/${entry.opened}` : "0/0";
+    const done = entry ? `${entry.completed}/${entry.attempts}` : "0/0";
     const rate = entry ? pct(entry.rate) : "n/a";
     const time = ms(report.medianCompletionTimeMsByLevel[levelId]);
-    lines.push(`    Level ${index + 1} (${levelId}): ${done} (${rate}), median completion ${time}`);
+    lines.push(`    Level ${index + 1} (${levelId}): ${done} attempts (${rate}), median completion ${time}`);
   }
 
   lines.push("");

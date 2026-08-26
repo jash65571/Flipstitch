@@ -1,10 +1,11 @@
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useFeedback } from "@/feedback/FeedbackProvider";
 import { getLevel, getLevelIndex, levels } from "@/game/levels";
+import { LevelVisit, makeAttemptId } from "@/playtest/attempt";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { useProgress } from "@/progress/ProgressProvider";
 import { GameScreen } from "@/screens/GameScreen";
@@ -19,21 +20,51 @@ export default function LevelRoute() {
   const { loading, isUnlocked, completeLevel, startLevel } = useProgress();
   const feedback = useFeedback();
   const playtest = usePlaytest();
-  const completedRef = useRef(false);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const visitRef = useRef<{ levelId: string; visit: LevelVisit } | null>(null);
+  const endTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Record the level open once per visit, and the exit once per visit unless
-  // the level was completed. The cleanup runs on route changes, back
-  // navigation, and app state unmounts, so it is the single exit reporter.
+  // One LevelVisit per genuine level visit. The open is recorded exactly once;
+  // the exit is recorded at most once, and only when the attempt never
+  // completed. The end is deferred by one tick so React StrictMode's immediate
+  // cleanup -> setup cycle for the SAME level cancels it instead of recording
+  // a bogus exit; a real unmount or level change lets it fire.
   useEffect(() => {
     if (!level) return;
-    completedRef.current = false;
-    playtest.track({ name: "level_opened", levelId: level.id });
-    return () => {
-      if (!completedRef.current) {
-        playtest.track({ name: "level_exited", levelId: level.id, completed: false });
+    if (visitRef.current?.levelId === level.id) {
+      // StrictMode-style re-setup for the same visit: cancel the deferred end.
+      if (endTimerRef.current !== null) {
+        clearTimeout(endTimerRef.current);
+        endTimerRef.current = null;
       }
+    } else {
+      const visit = new LevelVisit(level.id, makeAttemptId(playtest.sessionId, level.id));
+      visitRef.current = { levelId: level.id, visit };
+      setAttemptId(visit.id);
+    }
+    const visit = visitRef.current?.visit;
+    if (!visit) return;
+    const opened = visit.open();
+    if (opened) playtest.track(opened);
+
+    return () => {
+      const captured = visitRef.current;
+      endTimerRef.current = setTimeout(() => {
+        endTimerRef.current = null;
+        const exit = captured?.visit.end();
+        if (exit) playtest.track(exit);
+      }, 0);
     };
   }, [level, playtest]);
+
+  useEffect(() => {
+    return () => {
+      if (endTimerRef.current !== null) {
+        clearTimeout(endTimerRef.current);
+        endTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -65,12 +96,27 @@ export default function LevelRoute() {
   }
 
   function handleComplete(moves: number) {
-    completedRef.current = true;
+    const current = visitRef.current;
+    if (!current) return;
+    const completed = current.visit.complete();
+    if (completed) {
+      playtest.track({ ...completed, moveCount: moves });
+    }
     completeLevel(currentLevel.id, moves);
     if (index < levels.length - 1) {
       // Linear unlocking means completing level N unlocks N+1 in this moment.
       feedback.emit("levelUnlocked");
     }
+  }
+
+  function handleRestart() {
+    const current = visitRef.current;
+    if (!current) return;
+    const result = current.visit.restart(makeAttemptId(playtest.sessionId, current.levelId));
+    if (!result) return;
+    playtest.track(result.abandoned);
+    visitRef.current = { levelId: current.levelId, visit: result.next };
+    setAttemptId(result.next.id);
   }
 
   return (
@@ -80,9 +126,11 @@ export default function LevelRoute() {
       levelNumber={index + 1}
       hasPrevious={index > 0}
       hasNext={index < levels.length - 1}
+      attemptId={attemptId}
       onExit={() => router.replace("/")}
       onPrevious={() => openLevel(index - 1)}
       onNext={() => openLevel(index + 1)}
+      onRestart={handleRestart}
       onComplete={handleComplete}
     />
   );

@@ -14,6 +14,7 @@ import { PlaytestEventStore } from "./store.ts";
 export type TrackInput = {
   name: PlaytestEventName;
   levelId?: string;
+  attemptId?: string;
   activeSide?: "front" | "back";
   moveCount?: number;
   invalidReason?: string;
@@ -90,6 +91,11 @@ export class PlaytestTracker {
 
   async snapshot(): Promise<PlaytestEvent[]> {
     return this.store.snapshot();
+  }
+
+  /** Flushes any buffered events to storage (e.g. when the app backgrounds). */
+  async flush(): Promise<void> {
+    await this.store.flush();
   }
 
   async clear(): Promise<void> {

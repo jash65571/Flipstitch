@@ -55,6 +55,11 @@ export type PlaytestEvent = {
   elapsedMs: number;
   name: PlaytestEventName;
   levelId?: string;
+  /**
+   * Attempt identity: which play-through of the level this event belongs to.
+   * Absent on legacy version-one events whose attempt boundaries are unknown.
+   */
+  attemptId?: string;
   activeSide?: "front" | "back";
   moveCount?: number;
   invalidReason?: string;
@@ -75,6 +80,7 @@ export function isValidPlaytestEvent(value: unknown): value is PlaytestEvent {
     typeof event.timestamp === "number" &&
     typeof event.elapsedMs === "number" &&
     typeof event.name === "string" &&
-    (PLAYTEST_EVENT_NAMES as readonly string[]).includes(event.name)
+    (PLAYTEST_EVENT_NAMES as readonly string[]).includes(event.name) &&
+    (event.attemptId === undefined || typeof event.attemptId === "string")
   );
 }
