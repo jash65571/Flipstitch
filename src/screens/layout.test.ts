@@ -37,6 +37,22 @@ test("tablet landscape uses a capped two-column board", () => {
   assert.equal(layout.boardSize, 500);
 });
 
+test("Samsung S25 Ultra portrait keeps a large, reachable hoop", () => {
+  // ~480 x 1040 logical px at the device's default scale.
+  const layout = getGameLayout(480, 1040, 1);
+  assert.equal(layout.phoneLandscape, false);
+  assert.equal(layout.horizontal, false);
+  assert.ok(layout.boardSize <= 480 - layout.pagePadding * 2);
+  assert.ok(layout.boardSize >= 320, "the tall S25 Ultra should get a generous hoop");
+});
+
+test("S25 Ultra with large text stays compact and playable", () => {
+  const layout = getGameLayout(480, 1040, 1.5);
+  assert.equal(layout.compact, true);
+  assert.ok(layout.boardSize >= 280);
+  assert.ok(layout.boardSize <= 480 - layout.pagePadding * 2);
+});
+
 test("requested portrait device matrix keeps the hoop within safe horizontal space", () => {
   const devices = [
     { name: "small Android", width: 360, height: 640 },
