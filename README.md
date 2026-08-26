@@ -36,7 +36,6 @@ Then press `a` for Android or `i` for iOS. The web target is useful for quick la
 npm test
 npm run typecheck
 npm run doctor
-npm run doctor
 ```
 
 The milestone branch also exports Android, iOS, and web bundles in CI. Bricolage Grotesque and Manrope are bundled for offline use.
