@@ -60,11 +60,11 @@ contrast suite:
 ## GitHub Actions status
 
 The workflow file is valid and runs exist. The run on `main` for commit
-`b412644` (run 32992676189) completed with **success**; the two milestone-branch
-PR runs also passed. Earlier "no workflow runs" reports appear to have been
-timing (before the merge reached `main`) or a filtered Actions view. After this
-milestone is pushed, a new run on the new `main` head must be checked on the
-Actions tab; local gates above are required regardless.
+`b412644` (run 32992676189) completed with **success**, and the run on the
+final Milestone 3 head `9f192c5` (run 32995533029) also completed with
+**success**. Earlier "no workflow runs" reports were timing — the merge had
+not yet reached `main`. Milestone 4 pushes a new head and its run is verified
+in `docs/MILESTONE-4-QA.md`; local gates remain required regardless.
 
 ## Real-device status
 

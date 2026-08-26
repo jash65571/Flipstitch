@@ -41,7 +41,7 @@ The puzzle takes most of the screen. The only play controls are Undo, Preview, a
 - Local progress only.
 - Event logging for move, invalid move, undo, hint, restart, completion, and session exit.
 
-### Phase 1.5: feel and playtest proof (current)
+### Phase 1.5: feel and playtest proof (complete)
 
 - Original synthesized sound effects for every action, generated in-repo.
 - One feedback controller that maps semantic events to sound and haptics and
@@ -52,6 +52,17 @@ The puzzle takes most of the screen. The only play controls are Undo, Preview, a
   monotonic elapsed time. No accounts, ads, network, or external analytics.
 - A pure playtest report engine with small-sample warnings, exported from
   Settings.
+
+### Phase 1.6: stabilization and Android device proof (current)
+
+- Attempt identity on every level event: restarts, replays, exits, and
+  completions are distinct, reported per attempt, and honest about legacy
+  Milestone 3 data.
+- Hardened storage (full batch drains, background flush, safe clear), hardened
+  audio (independent delayed timers, promise-safe playback), and WCAG-AA
+  destructive confirmations.
+- A repeatable internal Android APK build profile (`eas.json`) so the S25
+  Ultra device pass can be run from any machine with an Expo account.
 
 ### Phase 2: content proof
 

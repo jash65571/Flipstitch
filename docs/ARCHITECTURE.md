@@ -57,13 +57,40 @@ Unlocking is linear and derived from contiguous completed levels. A completion u
 
 ## Local playtest
 
-`src/playtest/events.ts` defines the schema-versioned event set. `store.ts` provides pure bounded-store operations (5000-event cap, oldest-first eviction, corrupt-data fallback) plus a debounced AsyncStorage adapter so rapid taps never saturate storage. `tracker.ts` stamps events with session id, per-session sequence, epoch timestamp, and monotonic elapsed time, and deduplicates exit/completion events per session. `report.ts` is a pure summary engine for all milestone metrics with explicit small-sample warnings; Settings renders it and can share it.
+`src/playtest/events.ts` defines the schema-versioned event set with an
+optional `attemptId`. `store.ts` provides pure bounded-store operations
+(5000-event cap, oldest-first eviction, corrupt-data fallback) plus a debounced
+AsyncStorage adapter: `flush()` drains **all** pending batches in order, a
+generation counter makes `clear()` safe during in-flight writes, and the
+provider flushes on AppState background and teardown. `tracker.ts` stamps
+events with session id, per-session sequence, epoch timestamp, and monotonic
+elapsed time.
+
+`attempt.ts` is the pure attempt lifecycle: `LevelVisit` guarantees exactly one
+`level_opened` and exactly one terminal event (`level_completed`, `level_exited`,
+or `restart_used`) per attempt, allows replay after completion as a fresh
+attempt, and is idempotent under StrictMode-style repeated setup. The level
+route owns one visit per genuine visit and stamps every gameplay event with the
+current attempt id.
+
+`report.ts` is a pure, attempt-based summary engine (completion rates, time to
+first stitch, completion time, exit rate all per attempt) with explicit
+small-sample warnings. Version-one legacy events without attempt ids are
+reconstructed into inferred attempts and flagged, never treated as precise.
 
 The playtest store collects no names, emails, accounts, location, contacts, advertising identifiers, device fingerprints, or unrelated device data, and performs no network requests. `scripts/scan-analytics.mjs` enforces this in CI.
 
+## Builds
+
+`eas.json` defines an `internal` profile (shareable Android APK via
+`distribution: internal`, `buildType: apk`) and a `production` profile (Play
+Store AAB). npm scripts `build:android:internal` and `build:android:production`
+wrap the `eas build` invocations; EAS requires an Expo account and never runs
+without explicit invocation.
+
 ## Planned engineering gates
 
-1. Prove the core interaction on real iOS and Android devices.
+1. Prove the core interaction on real iOS and Android devices (S25 runbook exists; hardware pass pending).
 2. Add a solver that rejects impossible or multi-solution levels.
 3. Add persisted progress and local playtest tracking behind small interfaces.
 4. Add audio and richer haptics behind one feedback controller. (Skia rendering remains a later option; the SVG renderer still meets current needs.)

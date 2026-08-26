@@ -9,7 +9,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "node --test --experimental-strip-types src/game/content-flow.test.ts src/game/engine.test.ts src/game/solver.test.ts src/progress/model.test.ts src/screens/gallery-layout.test.ts src/screens/layout.test.ts src/theme/contrast.test.ts src/feedback/controller.test.ts src/settings/model.test.ts src/playtest/store.test.ts src/playtest/tracker.test.ts src/playtest/report.test.ts",
+    "test": "node --test --experimental-strip-types src/game/content-flow.test.ts src/game/engine.test.ts src/game/solver.test.ts src/progress/model.test.ts src/screens/gallery-layout.test.ts src/screens/layout.test.ts src/theme/contrast.test.ts src/feedback/controller.test.ts src/feedback/timers.test.ts src/settings/model.test.ts src/settings/confirm.test.ts src/playtest/attempt.test.ts src/playtest/store.test.ts src/playtest/tracker.test.ts src/playtest/report.test.ts",
     "typecheck": "tsc --noEmit",
     "doctor": "expo-doctor",
     "export:android": "expo export --platform android --output-dir dist/android",
@@ -18,6 +18,8 @@
     "generate:sounds": "node scripts/generate-sounds.mjs",
     "validate:audio": "node scripts/validate-audio.mjs",
     "scan:analytics": "node scripts/scan-analytics.mjs",
+    "build:android:internal": "eas build --platform android --profile internal",
+    "build:android:production": "eas build --platform android --profile production",
     "check": "npm test && npm run typecheck && npm run doctor && npm run validate:audio && npm run scan:analytics"
   },
   "dependencies": {

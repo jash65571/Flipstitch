@@ -25,7 +25,26 @@ npm test
 npm run doctor
 ```
 
-Then build a development or production APK with Expo:
+### Quickest: EAS internal APK (recommended)
+
+The repo ships an `eas.json` internal-distribution profile. From the project
+root (first run only: `npx eas-cli login`):
+
+```bash
+npm run build:android:internal
+```
+
+EAS builds in the cloud, prints an install URL, and can install to a connected
+device directly:
+
+```bash
+npx eas-cli build:run --platform android
+```
+
+This requires an Expo account and works with no local Android SDK. The build
+uses the existing package identifier `com.jashpatel.flipstitch`.
+
+### Local build (needs Android Studio / SDK + Java)
 
 ```bash
 npx expo run:android
@@ -36,6 +55,12 @@ or a production release:
 ```bash
 npx expo prebuild --platform android
 cd android && gradlew.bat assembleRelease
+```
+
+### Manual install from a local APK
+
+```bash
+adb install -r <path-to-apk>.apk
 ```
 
 ## 3. Install and launch

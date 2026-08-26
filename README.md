@@ -6,15 +6,18 @@ FlipStitch is a calm mobile puzzle game for Android and iOS. A player completes 
 
 ## Current milestone
 
-The feel and playtest proof milestone is complete on `main`. It answers: **Does FlipStitch feel satisfying on a real phone, and can we measure where players struggle?**
+The stabilization and Android device-proof milestone is complete on `main`. It hardens the playtest and feel work from Milestone 3:
 
-- Original synthesized sound effects for every action: needle pierce, thread tightening, hoop flip, invalid stitch, undo, hint, completion, unlock, and gallery selection.
-- Controlled haptics through one feedback controller, using each platform's recommended haptic APIs.
-- A minimal Settings screen: sound and haptics toggles, reduced-motion status, playtest data view/export/clear, progress reset, and about/license info.
-- Local playtest instrumentation with a bounded on-device store — no accounts, no ads, no network, no external analytics.
-- A pure playtest report engine with small-sample warnings, exportable from Settings.
+- Attempt identity on every level event: restarts, replays, exits, and completions are distinct and reported per attempt, with legacy Milestone 3 events flagged honestly.
+- Stable playtest lifecycle: exactly one open and one terminal event per attempt, safe under route replacement, Android back, backgrounding, and StrictMode-style remounts.
+- Hardened storage: all pending events drain in order, background flushes, clear-during-write is safe, 5,000-event bound kept.
+- Hardened audio: every delayed sound tracked and cleared, promise-safe native calls, no overlap on rapid taps.
+- Accessible destructive confirms: WCAG-AA armed contrast, timer cleanup, no double execution.
+- Repeatable builds: `eas.json` with an internal Android APK profile and a production AAB profile (`npm run build:android:internal` / `build:android:production`).
 
-The complete ten-level collection from the previous milestone remains:
+Milestone 3 (feel and playtest proof) also lives on `main`: original synthesized sound effects, controlled haptics through one feedback controller, a Settings screen, and local-only playtest instrumentation with a bounded store and a pure report engine — no accounts, no ads, no network, no external analytics.
+
+The complete ten-level collection from the earlier milestone remains:
 
 - Tap a valid hole to place one stitch.
 - The active side changes after every stitch.
@@ -57,6 +60,6 @@ npm run scan:analytics
 - Playtest data stays local, bounded, viewable, and clearable from Settings.
 - Monetization comes after retention testing, never before the core is proven.
 
-See [docs/PRODUCT.md](docs/PRODUCT.md) for the product plan, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical choices, [docs/RESEARCH-MILESTONE-3.md](docs/RESEARCH-MILESTONE-3.md) for feel/playtest research, and [docs/MILESTONE-3-QA.md](docs/MILESTONE-3-QA.md) for this milestone's QA evidence.
+See [docs/PRODUCT.md](docs/PRODUCT.md) for the product plan, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical choices, [docs/RESEARCH-MILESTONE-4.md](docs/RESEARCH-MILESTONE-4.md) for stabilization research, and [docs/MILESTONE-4-QA.md](docs/MILESTONE-4-QA.md) for this milestone's QA evidence.
 
-UI sources and earlier test matrices live in [docs/UI_RESEARCH.md](docs/UI_RESEARCH.md), [docs/RESEARCH-MILESTONE-2.md](docs/RESEARCH-MILESTONE-2.md), [docs/VERTICAL_SLICE_QA.md](docs/VERTICAL_SLICE_QA.md), and [docs/MILESTONE-2-QA.md](docs/MILESTONE-2-QA.md). Real-device instructions for the Samsung Galaxy S25 Ultra are in [docs/S25-ULTRA-PLAYTEST.md](docs/S25-ULTRA-PLAYTEST.md).
+Earlier research and test matrices: [docs/RESEARCH-MILESTONE-3.md](docs/RESEARCH-MILESTONE-3.md), [docs/MILESTONE-3-QA.md](docs/MILESTONE-3-QA.md), [docs/UI_RESEARCH.md](docs/UI_RESEARCH.md), [docs/RESEARCH-MILESTONE-2.md](docs/RESEARCH-MILESTONE-2.md), [docs/VERTICAL_SLICE_QA.md](docs/VERTICAL_SLICE_QA.md), and [docs/MILESTONE-2-QA.md](docs/MILESTONE-2-QA.md). Real-device instructions for the Samsung Galaxy S25 Ultra (including the EAS internal-APK handoff) are in [docs/S25-ULTRA-PLAYTEST.md](docs/S25-ULTRA-PLAYTEST.md).
