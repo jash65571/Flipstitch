@@ -16,15 +16,20 @@ import Svg, {
 
 import { availableNodes, edgeKey } from "@/game/engine";
 import { targetEdges } from "@/game/solver";
-import type { GameState, Level, Side, StitchHole } from "@/game/types";
-import { colors, radius, type } from "@/theme/tokens";
+import type { GameState, GuidanceLevel, Level, Side, StitchHole } from "@/game/types";
+import { colors, radius, thread, type } from "@/theme/tokens";
 
 type HoopBoardProps = {
   level: Level;
   game: GameState;
   visibleSide: Side;
   size: number;
+  /** Stage-3 hint: the single exact hole, ringed. */
   hintNode: string | null;
+  /** Stage-2 hint: the branch of candidate holes, softly marked. */
+  regionHoles?: string[];
+  /** Controls how much the board pre-highlights legal destinations. */
+  guidance?: GuidanceLevel;
   previewing: boolean;
   interactionDisabled?: boolean;
   onNodePress: (nodeId: string) => void;
@@ -46,17 +51,28 @@ function HoopBoardView({
   visibleSide,
   size,
   hintNode,
+  regionHoles,
+  guidance = "full",
   previewing,
   interactionDisabled = false,
   onNodePress
 }: HoopBoardProps) {
   const nodeById = useMemo(() => new Map(level.holes.map((hole) => [hole.id, hole])), [level.holes]);
   const validTargets = useMemo(() => new Set(availableNodes(level, game)), [game, level]);
-  const threadColor = visibleSide === "front" ? colors.coral : colors.iris;
-  const threadDeep = visibleSide === "front" ? colors.coralDeep : colors.irisDeep;
-  const softColor = visibleSide === "front" ? colors.coralSoft : colors.irisSoft;
+  const regionSet = useMemo(() => new Set(regionHoles ?? []), [regionHoles]);
+  const sideThread = visibleSide === "front" ? thread.front : thread.back;
+  const threadColor = sideThread.core;
+  const threadDeep = sideThread.deep;
+  const softColor = sideThread.soft;
   const currentPoint = pointFor(nodeById.get(game.currentHole)!, visibleSide, size);
   const showNeedle = !previewing && visibleSide === game.activeSide;
+  const onActiveSide = !previewing && visibleSide === game.activeSide;
+  // Full guidance glows every legal destination (teaching levels). Reduced and
+  // minimal guidance stop pre-highlighting; the player reads the pattern. A
+  // staged region hint still reveals its branch regardless of guidance. The
+  // dashed back stitches are the shape cue for the back; front stays solid.
+  const showAllTargets = guidance === "full";
+  const dashOpacity = guidance === "minimal" ? 0.5 : 1;
 
   return (
     <View
@@ -102,6 +118,20 @@ function HoopBoardView({
         <Circle cx={size / 2} cy={size / 2} r={size * 0.41} fill="url(#weave)" />
         <Circle cx={size / 2} cy={size / 2} r={size * 0.41} fill="url(#clothShade)" />
         <Circle cx={size / 2} cy={size / 2} r={size * 0.412} fill="none" stroke={colors.woodDark} strokeWidth={size * 0.012} opacity={0.58} />
+        {/* Thread-tension ring on the inner rim: dyes the hoop to the active
+            side so a flip is legible on the wood itself, not just the label.
+            Solid for the front, dashed for the back — shape, not only hue. */}
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={size * 0.398}
+          fill="none"
+          stroke={threadColor}
+          strokeWidth={size * 0.01}
+          strokeLinecap="round"
+          opacity={previewing ? 0.32 : 0.68}
+          strokeDasharray={visibleSide === "back" ? `${size * 0.02} ${size * 0.026}` : undefined}
+        />
         <Path
           d={`M ${size * 0.17} ${size * 0.27} A ${size * 0.39} ${size * 0.39} 0 0 1 ${size * 0.68} ${size * 0.105}`}
           fill="none"
@@ -165,6 +195,7 @@ function HoopBoardView({
                     strokeWidth={size * 0.009}
                     strokeLinecap="round"
                     strokeDasharray={`${size * 0.012} ${size * 0.022}`}
+                    opacity={dashOpacity}
                   />
                 )}
               </G>
@@ -174,10 +205,14 @@ function HoopBoardView({
         {level.holes.map((hole) => {
           const point = pointFor(hole, visibleSide, size);
           const current = showNeedle && hole.id === game.currentHole;
-          const target = !previewing && visibleSide === game.activeSide && validTargets.has(hole.id);
+          const isValid = onActiveSide && validTargets.has(hole.id);
+          // Glow when guidance hands out targets, or when a staged region hint
+          // has surfaced this branch. Accessibility labels below always expose
+          // valid moves regardless of this visual choice.
+          const glow = isValid && (showAllTargets || regionSet.has(hole.id));
           return (
             <G key={hole.id}>
-              {target ? <Circle cx={point.x} cy={point.y} r={size * 0.033} fill={softColor} opacity={0.9} /> : null}
+              {glow ? <Circle cx={point.x} cy={point.y} r={size * 0.033} fill={softColor} opacity={0.9} /> : null}
               <Circle cx={point.x + 0.8} cy={point.y + 1.5} r={size * 0.018} fill={colors.linenShadow} opacity={0.75} />
               <Circle
                 cx={point.x}

@@ -9,16 +9,17 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { useFeedback } from "@/feedback/FeedbackProvider";
 import { HoopBoard } from "@/components/HoopBoard";
-import { createGame, nextHint, oppositeSide, playMove, progress, undoMove } from "@/game/engine";
+import { Icon } from "@/components/Icon";
+import { LevelThumbnail } from "@/components/LevelThumbnail";
+import { createGame, guidanceFor, isGameStuck, oppositeSide, playMove, progress, stagedHint, undoMove } from "@/game/engine";
 import { targetEdges } from "@/game/solver";
-import type { GameState, Level, Side } from "@/game/types";
+import type { GameState, HintStage, Level, Side, StagedHint } from "@/game/types";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { getGameLayout } from "@/screens/layout";
-import { colors, radius, space, type } from "@/theme/tokens";
+import { colors, palette, radius, space, thread, type } from "@/theme/tokens";
 
 type ToolName = "undo" | "preview" | "hint";
 
@@ -45,34 +46,6 @@ type ToolButtonProps = {
   onPress: () => void;
 };
 
-function ToolGlyph({ tool, active }: { tool: ToolName; active?: boolean }) {
-  const color = active ? colors.white : colors.ink;
-  if (tool === "undo") {
-    return (
-      <Svg width={24} height={24} viewBox="0 0 24 24" pointerEvents="none">
-        <Path d="M9 7H5v-4" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
-        <Path d="M5.5 7.2A8 8 0 1 1 5 16" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
-      </Svg>
-    );
-  }
-
-  if (tool === "preview") {
-    return (
-      <Svg width={25} height={24} viewBox="0 0 25 24" pointerEvents="none">
-        <Path d="M2.5 12s3.7-5.3 10-5.3 10 5.3 10 5.3-3.7 5.3-10 5.3S2.5 12 2.5 12Z" fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
-        <Circle cx={12.5} cy={12} r={2.7} fill="none" stroke={color} strokeWidth={2} />
-      </Svg>
-    );
-  }
-
-  return (
-    <Svg width={24} height={24} viewBox="0 0 24 24" pointerEvents="none">
-      <Path d="m12 2.8 1.9 5.3 5.3 1.9-5.3 1.9-1.9 5.3-1.9-5.3L4.8 10l5.3-1.9L12 2.8Z" fill="none" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
-      <Line x1={18.5} y1={16.5} x2={21} y2={19} stroke={color} strokeWidth={1.9} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
 function ToolButton({ tool, label, disabled, active, onPress }: ToolButtonProps) {
   return (
     <Pressable
@@ -88,12 +61,20 @@ function ToolButton({ tool, label, disabled, active, onPress }: ToolButtonProps)
         pressed && !disabled && styles.toolButtonPressed
       ]}
     >
-      <ToolGlyph tool={tool} active={active} />
+      <Icon name={tool} size={24} color={active ? colors.white : colors.ink} accent={active ? colors.white : palette.brass} />
       <Text maxFontSizeMultiplier={1.6} style={[styles.toolLabel, active && styles.toolTextActive]}>
         {label}
       </Text>
     </Pressable>
   );
+}
+
+/** A guidance-aware opening line: full guidance points at the glow, the
+ *  quieter levels ask the player to read the pattern. */
+function openingMessage(level: Level): string {
+  return guidanceFor(level) === "full"
+    ? "Choose a glowing hole. Every stitch flips the hoop."
+    : "Read the pattern and choose a hole. Every stitch flips the hoop.";
 }
 
 export function GameScreen({
@@ -115,9 +96,11 @@ export function GameScreen({
 
   const [game, setGame] = useState<GameState>(() => createGame(level));
   const [previewSide, setPreviewSide] = useState<Side | null>(null);
-  const [hintNode, setHintNode] = useState<string | null>(null);
+  const [hint, setHint] = useState<StagedHint | null>(null);
+  const [stuck, setStuck] = useState(false);
   const [placedStitchCount, setPlacedStitchCount] = useState(0);
-  const [message, setMessage] = useState(level.hintText ?? "Choose a glowing hole. Every stitch flips the hoop.");
+  const guidance = guidanceFor(level);
+  const [message, setMessage] = useState(level.hintText ?? openingMessage(level));
   const [reduceMotion, setReduceMotion] = useState(false);
   const [animating, setAnimating] = useState(false);
   const inputLocked = useRef(false);
@@ -131,8 +114,8 @@ export function GameScreen({
   const completedCount = game.usedEdges.size;
   const totalCount = targetEdges(level).length;
   const percent = Math.round(progress(level, game) * 100);
-  const sideColor = visibleSide === "front" ? colors.coral : colors.iris;
-  const sideSoft = visibleSide === "front" ? colors.coralSoft : colors.irisSoft;
+  const hintNode = hint?.kind === "exact" ? hint.exactHole : null;
+  const regionHoles = hint?.kind === "region" ? hint.regionHoles : undefined;
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
@@ -151,9 +134,10 @@ export function GameScreen({
   useEffect(() => {
     setGame(createGame(level));
     setPreviewSide(null);
-    setHintNode(null);
+    setHint(null);
+    setStuck(false);
     setPlacedStitchCount(0);
-    setMessage(level.hintText ?? "Choose a glowing hole. Every stitch flips the hoop.");
+    setMessage(level.hintText ?? openingMessage(level));
     progressValue.setValue(0);
   }, [level, progressValue]);
 
@@ -241,7 +225,7 @@ export function GameScreen({
 
   function handleNodePress(nodeId: string) {
     if (inputLocked.current || previewSide || game.complete) return;
-    setHintNode(null);
+    setHint(null);
     const result = playMove(level, game, nodeId);
     if (!result.ok) {
       say(result.reason === "same-hole" ? "The needle is already here." : "That line is not available on this side.");
@@ -268,18 +252,41 @@ export function GameScreen({
       moveCount: nextMoveCount
     });
 
+    // Pure trapped-thread check on the resulting state: not complete, yet no
+    // legal unused stitch leaves the new hole/side. Detected here, surfaced in
+    // the footer after the flip settles. Never fires on the completing stitch.
+    const nowStuck = !result.completedNow && isGameStuck(level, result.state);
+
     animateSwap(() => {
       setGame(result.state);
       setPreviewSide(null);
+      setStuck(nowStuck);
       feedback.emit("sideChanged");
-      say(
-        result.completedNow
-          ? "Thread complete. Both sides are stitched."
-          : `${result.state.activeSide === "front" ? "Front" : "Back"} side. Choose the next glowing hole.`
-      );
+      if (nowStuck) {
+        feedback.emit("invalidMove");
+        say("The thread is caught. No stitch leaves this hole on this side — undo the last stitch, or restart the hoop.");
+      } else {
+        say(
+          result.completedNow
+            ? "Thread complete. Both sides are stitched."
+            : `${result.state.activeSide === "front" ? "Front" : "Back"} side. ${
+                guidance === "full" ? "Choose the next glowing hole." : "Read the pattern for your next stitch."
+              }`
+        );
+      }
     });
 
     setPlacedStitchCount(nextMoveCount);
+
+    if (nowStuck) {
+      playtest.track({
+        name: "thread_trapped",
+        levelId: level.id,
+        attemptId: attemptId ?? undefined,
+        activeSide: result.state.activeSide,
+        moveCount: nextMoveCount
+      });
+    }
 
     if (result.completedNow) {
       feedback.emit("levelCompleted");
@@ -292,7 +299,8 @@ export function GameScreen({
     animateSwap(() => {
       setGame(undoMove(level, game));
       setPreviewSide(null);
-      setHintNode(null);
+      setHint(null);
+      setStuck(false);
       say("Stitch removed. The needle and side are restored.");
     });
     feedback.emit("undo");
@@ -303,29 +311,34 @@ export function GameScreen({
     if (inputLocked.current) return;
     animateSwap(() => {
       setPreviewSide((current) => (current ? null : oppositeSide(game.activeSide)));
-      setHintNode(null);
+      setHint(null);
       feedback.emit("sideChanged");
     });
     playtest.track({ name: "preview_used", levelId: level.id, attemptId: attemptId ?? undefined });
   }
 
+  // Staged, opt-in help. Each tap escalates one rung: concept -> region -> exact
+  // hole. The player chooses how far to go; the first tap never reveals the
+  // answer.
   function handleHint() {
     if (inputLocked.current) return;
-    const hint = nextHint(level, game);
+    const nextStage = (hint ? Math.min(3, hint.stage + 1) : 1) as HintStage;
+    const staged = stagedHint(level, game, nextStage);
     setPreviewSide(null);
-    setHintNode(hint);
-    say(hint ? `Hole ${hint.toUpperCase()} keeps a full solution open.` : "This path is blocked. Undo the last stitch and try another branch.");
+    setHint(staged);
+    say(staged.text);
     feedback.emit("hint");
-    playtest.track({ name: "hint_used", levelId: level.id, attemptId: attemptId ?? undefined });
+    playtest.track({ name: "hint_used", levelId: level.id, attemptId: attemptId ?? undefined, hintStage: nextStage });
   }
 
   function handleRestart() {
     setGame(createGame(level));
     setPreviewSide(null);
-    setHintNode(null);
+    setHint(null);
+    setStuck(false);
     setPlacedStitchCount(0);
     progressValue.setValue(0);
-    say(level.hintText ?? "Fresh thread. Choose a glowing hole to begin.");
+    say(level.hintText ?? openingMessage(level));
     onRestart();
   }
 
@@ -356,6 +369,8 @@ export function GameScreen({
           </Pressable>
         ) : <View style={styles.navPlaceholder} />}
       </View>
+      {/* Side identity now lives on the hoop itself — the thread-dyed rim and
+          the single woven side label — so the header carries only the title. */}
       <View style={styles.header}>
         <View style={styles.titleBlock}>
           <Text maxFontSizeMultiplier={1.6} style={styles.collection}>
@@ -364,17 +379,6 @@ export function GameScreen({
           <Text maxFontSizeMultiplier={1.6} style={[styles.title, compact && styles.titleCompact]}>
             {level.title}
           </Text>
-        </View>
-        <View style={[styles.sideBadge, { backgroundColor: sideSoft, borderColor: sideColor }]}>
-          <Text maxFontSizeMultiplier={1.4} style={styles.sideEyebrow}>
-            {previewSide ? "LOOKING AT" : "STITCH ON"}
-          </Text>
-          <View style={styles.sideNameRow}>
-            <View style={[styles.sideDot, { backgroundColor: sideColor }]} />
-            <Text maxFontSizeMultiplier={1.4} style={styles.sideText}>
-              {visibleSide.toUpperCase()}
-            </Text>
-          </View>
         </View>
       </View>
 
@@ -399,10 +403,15 @@ export function GameScreen({
   const footer = (
     <View style={[styles.footer, horizontal && styles.footerWide]}>
       {game.complete ? (
-        <Animated.View accessible accessibilityRole="summary" style={[styles.completionCard, { opacity: completionOpacity, transform: [{ scale: completionScale }] }]}>
+        <Animated.View accessible accessibilityRole="summary" accessibilityLabel={`Thread complete. ${level.completionMessage}`} style={[styles.completionCard, { opacity: completionOpacity, transform: [{ scale: completionScale }] }]}>
           <View style={styles.completionTop}>
-            <View style={styles.completionSeal}>
-              <Text maxFontSizeMultiplier={1.4} style={styles.completionMark}>✓</Text>
+            {/* The finished sampler settles as one object: front (solid) and
+                back (dashed) threads together on the hoop. */}
+            <View style={styles.completionArtifact}>
+              <LevelThumbnail level={level} size={64} />
+              <View style={styles.completionSealBadge}>
+                <Icon name="completed" size={18} color={thread.front.deep} accent={thread.back.deep} strokeWidth={2.4} />
+              </View>
             </View>
             <View style={styles.completionCopy}>
               <Text maxFontSizeMultiplier={1.6} style={styles.completionTitle}>Thread complete</Text>
@@ -421,17 +430,48 @@ export function GameScreen({
             </Pressable>
           </View>
         </Animated.View>
+      ) : stuck ? (
+        <View accessible accessibilityRole="alert" style={styles.trapCard}>
+          <View style={styles.trapTop}>
+            <View style={styles.trapMarkWrap}>
+              <Icon name="trapped" size={26} color={colors.danger} accent={thread.back.deep} strokeWidth={2.2} />
+            </View>
+            <View style={styles.trapCopy}>
+              <Text maxFontSizeMultiplier={1.6} style={styles.trapTitle}>The thread is caught</Text>
+              <Text maxFontSizeMultiplier={1.9} style={styles.trapText}>
+                No stitch leaves this hole on this side. Nothing is lost — step back a stitch, or start the hoop fresh.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.trapActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Undo the last stitch to free the thread" onPress={handleUndo} disabled={game.moves.length === 0 || animating} style={({ pressed }) => [styles.nextButton, pressed && styles.replayPressed]}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.nextButtonText}>Undo stitch</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Restart the hoop from the beginning" onPress={handleRestart} style={({ pressed }) => [styles.secondaryButton, pressed && styles.replayPressed]}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.secondaryButtonText}>Restart</Text>
+            </Pressable>
+          </View>
+        </View>
       ) : (
         <View accessibilityLiveRegion="polite" style={styles.messageBox}>
           <Text maxFontSizeMultiplier={2} style={styles.message}>{message}</Text>
+          {hint ? (
+            <View style={styles.hintDots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              {[1, 2, 3].map((rung) => (
+                <View key={rung} style={[styles.hintDot, hint.stage >= rung && styles.hintDotOn]} />
+              ))}
+            </View>
+          ) : null}
         </View>
       )}
 
-      {!game.complete ? (
+      {/* Tools soften to only the relevant ones: the trap card owns undo and
+          restart, so the toolbar hides while stuck or complete. */}
+      {!game.complete && !stuck ? (
         <View style={styles.toolbar}>
           <ToolButton tool="undo" label="Undo" disabled={game.moves.length === 0 || animating} onPress={handleUndo} />
           <ToolButton tool="preview" label={previewSide ? "Return" : "Preview"} disabled={animating} active={previewSide !== null} onPress={handlePreview} />
-          <ToolButton tool="hint" label="Hint" disabled={animating} onPress={handleHint} />
+          <ToolButton tool="hint" label={hint ? `Hint ${hint.stage}/3` : "Hint"} disabled={animating} active={hint !== null} onPress={handleHint} />
         </View>
       ) : null}
     </View>
@@ -459,6 +499,8 @@ export function GameScreen({
                 visibleSide={visibleSide}
                 size={boardSize}
                 hintNode={hintNode}
+                regionHoles={regionHoles}
+                guidance={guidance}
                 previewing={previewSide !== null}
                 interactionDisabled={animating || previewSide !== null || game.complete}
                 onNodePress={handleNodePress}
@@ -559,38 +601,6 @@ const styles = StyleSheet.create({
     fontSize: 27,
     lineHeight: 31
   },
-  sideBadge: {
-    minWidth: 104,
-    minHeight: 52,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    justifyContent: "center",
-    borderWidth: 1,
-    borderRadius: radius.md
-  },
-  sideEyebrow: {
-    color: colors.inkSoft,
-    fontFamily: type.bodyBold,
-    fontSize: 8,
-    letterSpacing: 1.05
-  },
-  sideNameRow: {
-    marginTop: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7
-  },
-  sideDot: {
-    width: 9,
-    height: 9,
-    borderRadius: radius.pill
-  },
-  sideText: {
-    color: colors.ink,
-    fontFamily: type.bodyBold,
-    fontSize: 12,
-    letterSpacing: 1.05
-  },
   progressGroup: {
     marginTop: space.md
   },
@@ -654,31 +664,94 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     textAlign: "center"
   },
+  hintDots: {
+    marginTop: 8,
+    flexDirection: "row",
+    gap: 6
+  },
+  hintDot: {
+    width: 7,
+    height: 7,
+    borderRadius: radius.pill,
+    backgroundColor: colors.linenShadow
+  },
+  hintDotOn: {
+    backgroundColor: palette.brass
+  },
+  trapCard: {
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    backgroundColor: colors.clothShade,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: radius.md
+  },
+  trapTop: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  trapMarkWrap: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.linenShadow,
+    borderRadius: radius.sm
+  },
+  trapCopy: {
+    flex: 1,
+    paddingHorizontal: 11
+  },
+  trapTitle: {
+    color: colors.ink,
+    fontFamily: type.brand,
+    fontSize: 17
+  },
+  trapText: {
+    marginTop: 2,
+    color: colors.inkSoft,
+    fontFamily: type.bodyMedium,
+    fontSize: 12,
+    lineHeight: 17
+  },
+  trapActions: {
+    marginTop: 11,
+    flexDirection: "row",
+    gap: 8
+  },
   completionCard: {
     minHeight: 126,
     paddingHorizontal: 13,
     paddingVertical: 10,
-    backgroundColor: "#FFF7DF",
+    backgroundColor: colors.cloth,
     borderWidth: 1,
-    borderColor: "#E5C97A",
+    borderColor: palette.brass,
     borderRadius: radius.md
   },
   completionTop: {
     flexDirection: "row",
     alignItems: "center"
   },
-  completionSeal: {
-    width: 42,
-    height: 42,
+  completionArtifact: {
+    width: 64,
+    height: 64,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  completionSealBadge: {
+    position: "absolute",
+    right: -4,
+    bottom: -2,
+    width: 26,
+    height: 26,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.gold,
-    borderRadius: radius.pill
-  },
-  completionMark: {
-    color: colors.ink,
-    fontFamily: type.bodyBold,
-    fontSize: 22
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.cloth
   },
   completionCopy: {
     flex: 1,

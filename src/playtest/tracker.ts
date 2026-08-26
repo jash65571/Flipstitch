@@ -18,6 +18,7 @@ export type TrackInput = {
   activeSide?: "front" | "back";
   moveCount?: number;
   invalidReason?: string;
+  hintStage?: number;
   completed?: boolean;
   setting?: string;
   value?: string | boolean;
