@@ -1,5 +1,5 @@
 import { canonicalEdgeKey, oppositeSide, solveFromState, targetEdges } from "./solver.ts";
-import type { GameState, Level, Move, MoveResult, StitchEdge } from "./types.ts";
+import type { GameState, GuidanceLevel, HintStage, Level, Move, MoveResult, StagedHint, StitchEdge } from "./types.ts";
 
 export { oppositeSide } from "./solver.ts";
 
@@ -96,4 +96,55 @@ export function nextHint(level: Level, state: GameState): string | null {
 
   const continuation = solveFromState(level, state, 1).solutions[0];
   return continuation?.[1] ?? null;
+}
+
+/** Effective guidance for a level; levels default to full guidance. */
+export function guidanceFor(level: Level): GuidanceLevel {
+  return level.guidance ?? "full";
+}
+
+/**
+ * The thread is caught when the level is not complete yet, but no legal unused
+ * stitch leaves the current hole on the current side. This is a genuine dead
+ * end — not an "eventually unwinnable" prediction — so it never spoils a hint.
+ * A completed game is never stuck.
+ */
+export function isGameStuck(level: Level, state: GameState): boolean {
+  if (state.complete) {
+    return false;
+  }
+  return availableNodes(level, state).length === 0;
+}
+
+const GENERIC_CLUES = {
+  concept: "One thread must cross every line on both sides. Trace where it still has to go.",
+  region: "Look at the holes still linked to the needle on this side."
+} as const;
+
+/**
+ * Staged, opt-in help. The player chooses how far to escalate:
+ *   1. a conceptual clue about the route or loop (reveals no holes),
+ *   2. a region/branch clue that softly marks the candidate holes,
+ *   3. the exact next hole that keeps a full solution open.
+ * Stage 3 delegates to the solver, so it is always correct even when authors
+ * only wrote the softer copy.
+ */
+export function stagedHint(level: Level, state: GameState, stage: HintStage): StagedHint {
+  const options = availableNodes(level, state);
+  const concept = level.clues?.concept ?? level.hintText ?? GENERIC_CLUES.concept;
+  const region = level.clues?.region ?? GENERIC_CLUES.region;
+
+  if (stage === 1) {
+    return { stage, kind: "concept", text: concept, regionHoles: [], exactHole: null };
+  }
+  if (stage === 2) {
+    const text = options.length > 0 ? region : "No stitch leaves this hole. Undo to free the thread.";
+    return { stage, kind: "region", text, regionHoles: options, exactHole: null };
+  }
+
+  const exact = nextHint(level, state);
+  const text = exact
+    ? `Stitch to hole ${exact.toUpperCase()} — it keeps a full solution open.`
+    : "This branch is caught. Undo the last stitch and try another route.";
+  return { stage, kind: "exact", text, regionHoles: options, exactHole: exact };
 }

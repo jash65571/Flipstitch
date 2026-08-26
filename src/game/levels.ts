@@ -22,6 +22,11 @@ const authoredLevels: Level[] = [
     unique: true,
     allowDeadEnds: false,
     hintText: "Follow the glow. Each stitch moves the needle to the other side.",
+    guidance: "full",
+    clues: {
+      concept: "One thread zig-zags across the whole arc. It only ever steps to the next hole along.",
+      region: "From here the needle can reach a single new hole — the glow shows it."
+    },
     completionMessage: "Your first sunrise is stitched."
   },
   {
@@ -43,6 +48,11 @@ const authoredLevels: Level[] = [
     unique: true,
     allowDeadEnds: false,
     hintText: "This hoop begins on the back. The side badge always shows where to stitch.",
+    guidance: "full",
+    clues: {
+      concept: "The kite draws one continuous outline. Read where the frame is still open.",
+      region: "Only the holes still joined to the needle on this side can take the next stitch."
+    },
     completionMessage: "The kite lifts on one unbroken thread."
   },
   {
@@ -62,6 +72,11 @@ const authoredLevels: Level[] = [
     unique: false,
     allowDeadEnds: false,
     hintText: "Either petal is safe. Finish one loop, then stitch the other.",
+    guidance: "reduced",
+    clues: {
+      concept: "Two petals share the base hole. Complete one petal's out-and-back before starting the other.",
+      region: "Both side holes branch from the base — either one is a safe first stitch."
+    },
     completionMessage: "Two choices, one balanced bloom."
   },
   {
@@ -88,6 +103,11 @@ const authoredLevels: Level[] = [
     unique: false,
     allowDeadEnds: false,
     hintText: "Both wings return to the center, so either wing can go first.",
+    guidance: "reduced",
+    clues: {
+      concept: "Every wing loop passes back through the central hole. Finish a wing before crossing to the other.",
+      region: "Trace which wing still has an open line leading back to the centre."
+    },
     completionMessage: "Both wings meet at the same golden center."
   },
   {
@@ -108,6 +128,11 @@ const authoredLevels: Level[] = [
     unique: true,
     allowDeadEnds: true,
     hintText: "A tempting branch can strand thread. Undo is part of solving.",
+    guidance: "reduced",
+    clues: {
+      concept: "One branch here leads nowhere and strands the thread. Choose the line that leaves an exit.",
+      region: "Two lines leave the shared hole — only one keeps the far holes reachable."
+    },
     completionMessage: "You found the branch that brings every stitch home."
   },
   {
@@ -133,6 +158,11 @@ const authoredLevels: Level[] = [
     unique: true,
     allowDeadEnds: true,
     hintText: "Close each short echo before climbing to the next step.",
+    guidance: "reduced",
+    clues: {
+      concept: "Each step is a small out-and-back echo. Close the echo you are on before climbing higher.",
+      region: "The lower, nearer holes hold the echo you still owe — resolve it before the long line up."
+    },
     completionMessage: "Every return built the staircase."
   },
   {
@@ -155,6 +185,11 @@ const authoredLevels: Level[] = [
     unique: false,
     allowDeadEnds: false,
     hintText: "Three loops share one hole. Their order changes, but each loop returns safely.",
+    guidance: "reduced",
+    clues: {
+      concept: "Three petals orbit one hub. Any order works, but each petal must go out and come straight back.",
+      region: "From the hub, every remaining petal is an open branch — pick one and return through the hub."
+    },
     completionMessage: "Three orbits close into one bloom."
   },
   {
@@ -181,6 +216,11 @@ const authoredLevels: Level[] = [
     unique: false,
     allowDeadEnds: false,
     hintText: "The top and bottom holes are shared. Every crossing still returns to the frame.",
+    guidance: "minimal",
+    clues: {
+      concept: "The top and bottom holes are shared by both diagonals. Each crossing has to return to the frame.",
+      region: "Follow the diagonal that still has an unstitched line into a shared hole."
+    },
     completionMessage: "The shared holes hold a clean woven window."
   },
   {
@@ -208,6 +248,11 @@ const authoredLevels: Level[] = [
     unique: true,
     allowDeadEnds: true,
     hintText: "Finish each moonlit return before moving farther right.",
+    guidance: "minimal",
+    clues: {
+      concept: "The pattern climbs left to right in linked returns. Skipping ahead strands a hole behind you.",
+      region: "The left-most unfinished cluster still owes a return — settle it before reaching right."
+    },
     completionMessage: "Careful returns carried the thread into moonlight."
   },
   {
@@ -239,6 +284,11 @@ const authoredLevels: Level[] = [
     unique: true,
     allowDeadEnds: true,
     hintText: "Plan in pairs. Close every small loop before taking the long stitch onward.",
+    guidance: "minimal",
+    clues: {
+      concept: "This sampler chains many small loops. Close each loop fully before the long stitch that leaves it.",
+      region: "The tight cluster around the needle still holds an unclosed loop — finish it before travelling on."
+    },
     completionMessage: "The final sampler proves one thread can hold two plans."
   }
 ];

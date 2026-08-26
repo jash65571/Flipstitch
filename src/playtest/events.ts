@@ -22,6 +22,7 @@ export type PlaytestEventName =
   | "preview_used"
   | "undo_used"
   | "hint_used"
+  | "thread_trapped"
   | "restart_used"
   | "level_exited"
   | "level_completed"
@@ -37,6 +38,7 @@ export const PLAYTEST_EVENT_NAMES: readonly PlaytestEventName[] = [
   "preview_used",
   "undo_used",
   "hint_used",
+  "thread_trapped",
   "restart_used",
   "level_exited",
   "level_completed",
@@ -63,6 +65,8 @@ export type PlaytestEvent = {
   activeSide?: "front" | "back";
   moveCount?: number;
   invalidReason?: string;
+  /** Which rung of the staged hint ladder was requested (1, 2, or 3). */
+  hintStage?: number;
   completed?: boolean;
   setting?: string;
   value?: string | boolean;
