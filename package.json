@@ -6,26 +6,39 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
-    "test": "node --test --experimental-strip-types src/game/engine.test.ts",
-    "typecheck": "tsc --noEmit"
+    "test": "node --test --experimental-strip-types src/game/engine.test.ts src/screens/layout.test.ts src/theme/contrast.test.ts",
+    "typecheck": "tsc --noEmit",
+    "doctor": "expo-doctor",
+    "export:android": "expo export --platform android --output-dir dist/android",
+    "export:ios": "expo export --platform ios --output-dir dist/ios",
+    "export:web": "expo export --platform web --output-dir dist/web",
+    "check": "npm test && npm run typecheck && npm run doctor"
   },
   "dependencies": {
+    "@expo-google-fonts/bricolage-grotesque": "^0.4.1",
+    "@expo-google-fonts/manrope": "^0.4.2",
+    "@expo/metro-runtime": "~57.0.13",
     "expo": "~57.0.9",
+    "expo-font": "~57.0.1",
     "expo-haptics": "~57.0.1",
     "expo-router": "~57.0.9",
+    "expo-splash-screen": "~57.0.8",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.2",
     "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-native": "0.86.2",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-svg": "15.15.4"
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
     "@types/react": "~19.2.2",
+    "expo-doctor": "^1.20.3",
     "typescript": "~6.0.3"
   }
 }

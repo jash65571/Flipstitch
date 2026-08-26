@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Animated,
@@ -10,26 +10,59 @@ import {
   View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { HoopBoard } from "@/components/HoopBoard";
 import { createGame, nextHint, oppositeSide, playMove, progress, undoMove } from "@/game/engine";
 import { levelOne } from "@/game/level-one";
 import type { GameState, Side } from "@/game/types";
+import { getGameLayout } from "@/screens/layout";
 import { colors, radius, space, type } from "@/theme/tokens";
 
+type ToolName = "undo" | "preview" | "hint";
+
 type ToolButtonProps = {
-  icon: string;
+  tool: ToolName;
   label: string;
   disabled?: boolean;
   active?: boolean;
   onPress: () => void;
 };
 
-function ToolButton({ icon, label, disabled, active, onPress }: ToolButtonProps) {
+function ToolGlyph({ tool, active }: { tool: ToolName; active?: boolean }) {
+  const color = active ? colors.white : colors.ink;
+  if (tool === "undo") {
+    return (
+      <Svg width={24} height={24} viewBox="0 0 24 24" pointerEvents="none">
+        <Path d="M9 7H5v-4" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d="M5.5 7.2A8 8 0 1 1 5 16" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" />
+      </Svg>
+    );
+  }
+
+  if (tool === "preview") {
+    return (
+      <Svg width={25} height={24} viewBox="0 0 25 24" pointerEvents="none">
+        <Path d="M2.5 12s3.7-5.3 10-5.3 10 5.3 10 5.3-3.7 5.3-10 5.3S2.5 12 2.5 12Z" fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+        <Circle cx={12.5} cy={12} r={2.7} fill="none" stroke={color} strokeWidth={2} />
+      </Svg>
+    );
+  }
+
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" pointerEvents="none">
+      <Path d="m12 2.8 1.9 5.3 5.3 1.9-5.3 1.9-1.9 5.3-1.9-5.3L4.8 10l5.3-1.9L12 2.8Z" fill="none" stroke={color} strokeWidth={1.9} strokeLinejoin="round" />
+      <Line x1={18.5} y1={16.5} x2={21} y2={19} stroke={color} strokeWidth={1.9} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function ToolButton({ tool, label, disabled, active, onPress }: ToolButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: Boolean(disabled), selected: Boolean(active) }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -39,23 +72,35 @@ function ToolButton({ icon, label, disabled, active, onPress }: ToolButtonProps)
         pressed && !disabled && styles.toolButtonPressed
       ]}
     >
-      <Text style={[styles.toolIcon, active && styles.toolTextActive]}>{icon}</Text>
-      <Text style={[styles.toolLabel, active && styles.toolTextActive]}>{label}</Text>
+      <ToolGlyph tool={tool} active={active} />
+      <Text maxFontSizeMultiplier={1.6} style={[styles.toolLabel, active && styles.toolTextActive]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
 
 export function GameScreen() {
-  const { width, height } = useWindowDimensions();
-  const boardSize = Math.min(width - space.lg * 2, height * 0.52, 470);
+  const { width, height, fontScale } = useWindowDimensions();
+  const { boardSize, compact, horizontal, pagePadding, phoneLandscape } = getGameLayout(width, height, fontScale);
+
   const [game, setGame] = useState<GameState>(() => createGame(levelOne));
   const [previewSide, setPreviewSide] = useState<Side | null>(null);
   const [hintNode, setHintNode] = useState<string | null>(null);
-  const [message, setMessage] = useState("Tap the glowing hole to make your first stitch.");
+  const [message, setMessage] = useState("Tap the coral glow. Every stitch flips the hoop.");
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const inputLocked = useRef(false);
   const flipScale = useRef(new Animated.Value(1)).current;
+  const settleScale = useRef(new Animated.Value(1)).current;
+  const shakeX = useRef(new Animated.Value(0)).current;
+  const progressValue = useRef(new Animated.Value(0)).current;
   const visibleSide = previewSide ?? game.activeSide;
+  const completedCount = game.usedEdges.size;
+  const totalCount = levelOne.edges.length;
   const percent = Math.round(progress(levelOne, game) * 100);
+  const sideColor = visibleSide === "front" ? colors.coral : colors.iris;
+  const sideSoft = visibleSide === "front" ? colors.coralSoft : colors.irisSoft;
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
@@ -63,38 +108,80 @@ export function GameScreen() {
     return () => subscription.remove();
   }, []);
 
-  const progressWidth = useMemo(
-    () => flipScale.interpolate({ inputRange: [0, 1], outputRange: ["0%", `${percent}%`] }),
-    [flipScale, percent]
-  );
+  useEffect(() => {
+    Animated.timing(progressValue, {
+      toValue: percent,
+      duration: reduceMotion ? 0 : 260,
+      useNativeDriver: false
+    }).start();
+  }, [percent, progressValue, reduceMotion]);
+
+  const progressWidth = progressValue.interpolate({ inputRange: [0, 100], outputRange: ["0%", "100%"] });
+
+  function say(nextMessage: string) {
+    setMessage(nextMessage);
+    AccessibilityInfo.announceForAccessibility(nextMessage);
+  }
+
+  function finishAnimation() {
+    inputLocked.current = false;
+    setAnimating(false);
+  }
 
   function animateSwap(commit: () => void) {
+    if (inputLocked.current) return;
+    inputLocked.current = true;
+    setAnimating(true);
+
     if (reduceMotion) {
       commit();
+      finishAnimation();
       return;
     }
 
     Animated.timing(flipScale, {
-      toValue: 0.04,
-      duration: 115,
-      useNativeDriver: false
+      toValue: 0.055,
+      duration: 125,
+      useNativeDriver: true
     }).start(() => {
       commit();
-      Animated.spring(flipScale, {
-        toValue: 1,
-        damping: 18,
-        stiffness: 230,
-        mass: 0.7,
-        useNativeDriver: false
-      }).start();
+      settleScale.setValue(0.975);
+      Animated.parallel([
+        Animated.spring(flipScale, {
+          toValue: 1,
+          damping: 19,
+          stiffness: 255,
+          mass: 0.72,
+          useNativeDriver: true
+        }),
+        Animated.spring(settleScale, {
+          toValue: 1,
+          damping: 14,
+          stiffness: 250,
+          mass: 0.68,
+          useNativeDriver: true
+        })
+      ]).start(finishAnimation);
     });
   }
 
+  function showInvalidFeedback() {
+    if (reduceMotion) return;
+    Animated.sequence([
+      Animated.timing(shakeX, { toValue: -6, duration: 45, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 6, duration: 70, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: -3, duration: 60, useNativeDriver: true }),
+      Animated.timing(shakeX, { toValue: 0, duration: 45, useNativeDriver: true })
+    ]).start();
+  }
+
   function handleNodePress(nodeId: string) {
+    if (inputLocked.current || previewSide || game.complete) return;
     setHintNode(null);
     const result = playMove(levelOne, game, nodeId);
     if (!result.ok) {
-      setMessage(result.reason === "same-hole" ? "The needle is already here." : "That stitch is not part of this side.");
+      say(result.reason === "same-hole" ? "The needle is already here." : "That line is not available on this side.");
+      showInvalidFeedback();
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
       return;
     }
@@ -102,32 +189,33 @@ export function GameScreen() {
     animateSwap(() => {
       setGame(result.state);
       setPreviewSide(null);
-      setMessage(
+      say(
         result.completedNow
-          ? "Both sides are complete. One thread, two finished patterns."
-          : `Nice. The needle is now on the ${result.state.activeSide}.`
+          ? "Thread complete. Both sides are stitched."
+          : `${result.state.activeSide === "front" ? "Front" : "Back"} side. Choose the next glowing hole.`
       );
     });
 
     if (result.completedNow) {
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     } else {
-      void Haptics.selectionAsync().catch(() => undefined);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
     }
   }
 
   function handleUndo() {
-    if (game.moves.length === 0) return;
+    if (game.moves.length === 0 || inputLocked.current) return;
     animateSwap(() => {
       setGame(undoMove(levelOne, game));
       setPreviewSide(null);
       setHintNode(null);
-      setMessage("Stitch removed. Try a different path.");
+      say("Stitch removed. The needle and side are restored.");
     });
     void Haptics.selectionAsync().catch(() => undefined);
   }
 
   function handlePreview() {
+    if (inputLocked.current) return;
     animateSwap(() => {
       setPreviewSide((current) => (current ? null : oppositeSide(game.activeSide)));
       setHintNode(null);
@@ -135,10 +223,11 @@ export function GameScreen() {
   }
 
   function handleHint() {
+    if (inputLocked.current) return;
     const hint = nextHint(levelOne, game);
     setPreviewSide(null);
     setHintNode(hint);
-    setMessage(hint ? `Look for the glowing hole on the ${game.activeSide}.` : "This hoop is complete.");
+    say(hint ? `Hole ${hint.toUpperCase()} is a valid next stitch.` : "This hoop is complete.");
     void Haptics.selectionAsync().catch(() => undefined);
   }
 
@@ -146,60 +235,125 @@ export function GameScreen() {
     setGame(createGame(levelOne));
     setPreviewSide(null);
     setHintNode(null);
-    setMessage("Tap the glowing hole to make your first stitch.");
+    progressValue.setValue(0);
+    say("Fresh thread. Tap the coral glow to begin.");
   }
+
+  if (phoneLandscape) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
+        <View accessible accessibilityRole="alert" style={styles.rotateScreen}>
+          <View style={styles.rotateHoop}>
+            <View style={styles.rotateNeedle} />
+          </View>
+          <Text maxFontSizeMultiplier={1.8} style={styles.rotateTitle}>Turn the hoop upright</Text>
+          <Text maxFontSizeMultiplier={2} style={styles.rotateText}>FlipStitch plays in portrait so every hole stays easy to reach.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const header = (
+    <>
+      <View style={styles.header}>
+        <View style={styles.titleBlock}>
+          <Text maxFontSizeMultiplier={1.6} style={styles.collection}>
+            {levelOne.collection}
+          </Text>
+          <Text maxFontSizeMultiplier={1.6} style={[styles.title, compact && styles.titleCompact]}>
+            {levelOne.title}
+          </Text>
+        </View>
+        <View style={[styles.sideBadge, { backgroundColor: sideSoft, borderColor: sideColor }]}>
+          <Text maxFontSizeMultiplier={1.4} style={styles.sideEyebrow}>
+            {previewSide ? "LOOKING AT" : "STITCH ON"}
+          </Text>
+          <View style={styles.sideNameRow}>
+            <View style={[styles.sideDot, { backgroundColor: sideColor }]} />
+            <Text maxFontSizeMultiplier={1.4} style={styles.sideText}>
+              {visibleSide.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel="Pattern progress"
+        accessibilityValue={{ min: 0, max: totalCount, now: completedCount, text: `${completedCount} of ${totalCount} stitches` }}
+        style={styles.progressGroup}
+      >
+        <View style={styles.progressLabels}>
+          <Text maxFontSizeMultiplier={1.5} style={styles.progressLabel}>ONE THREAD</Text>
+          <Text maxFontSizeMultiplier={1.5} style={styles.progressNumber}>{completedCount} / {totalCount}</Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
+        </View>
+      </View>
+    </>
+  );
+
+  const footer = (
+    <View style={[styles.footer, horizontal && styles.footerWide]}>
+      {game.complete ? (
+        <View accessible accessibilityRole="summary" style={styles.completionCard}>
+          <View style={styles.completionSeal}>
+            <Text maxFontSizeMultiplier={1.4} style={styles.completionMark}>✓</Text>
+          </View>
+          <View style={styles.completionCopy}>
+            <Text maxFontSizeMultiplier={1.6} style={styles.completionTitle}>Thread complete</Text>
+            <Text maxFontSizeMultiplier={1.8} style={styles.completionText}>Two patterns, joined by one path.</Text>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Play level again" onPress={handleRestart} style={({ pressed }) => [styles.replayButton, pressed && styles.replayPressed]}>
+            <Text maxFontSizeMultiplier={1.5} style={styles.replayText}>Again</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <View accessibilityLiveRegion="polite" style={styles.messageBox}>
+          <Text maxFontSizeMultiplier={2} style={styles.message}>{message}</Text>
+        </View>
+      )}
+
+      <View style={styles.toolbar}>
+        <ToolButton tool="undo" label="Undo" disabled={game.moves.length === 0 || animating} onPress={handleUndo} />
+        <ToolButton tool="preview" label={previewSide ? "Return" : "Preview"} disabled={animating} active={previewSide !== null} onPress={handlePreview} />
+        <ToolButton tool="hint" label="Hint" disabled={game.complete || animating} onPress={handleHint} />
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
-      <View style={styles.screen}>
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.collection}>{levelOne.collection}</Text>
-            <Text style={styles.title}>{levelOne.title}</Text>
+      <View style={[styles.screen, { paddingHorizontal: pagePadding }, horizontal && styles.screenWide]}>
+        <View style={[styles.playArea, horizontal && styles.playAreaWide]}>
+          {header}
+          <View style={[styles.boardRegion, horizontal && styles.boardRegionWide]}>
+            <Animated.View
+              style={{
+                transform: [
+                  { perspective: 900 },
+                  { translateX: shakeX },
+                  { scaleX: flipScale },
+                  { scale: settleScale }
+                ]
+              }}
+            >
+              <HoopBoard
+                level={levelOne}
+                game={game}
+                visibleSide={visibleSide}
+                size={boardSize}
+                hintNode={hintNode}
+                previewing={previewSide !== null}
+                interactionDisabled={animating || previewSide !== null || game.complete}
+                onNodePress={handleNodePress}
+              />
+            </Animated.View>
           </View>
-          <View style={[styles.sideBadge, visibleSide === "back" && styles.sideBadgeBack]}>
-            <View style={[styles.sideDot, visibleSide === "back" && styles.sideDotBack]} />
-            <Text style={styles.sideText}>{visibleSide.toUpperCase()}</Text>
-          </View>
         </View>
-
-        <View style={styles.progressTrack} accessibilityLabel={`${percent}% complete`}>
-          <Animated.View style={[styles.progressFill, { width: progressWidth }]} />
-        </View>
-
-        <View style={styles.boardRegion}>
-          <Animated.View style={{ transform: [{ scaleX: flipScale }] }}>
-            <HoopBoard
-              level={levelOne}
-              game={game}
-              visibleSide={visibleSide}
-              size={boardSize}
-              hintNode={hintNode}
-              previewing={previewSide !== null}
-              onNodePress={handleNodePress}
-            />
-          </Animated.View>
-        </View>
-
-        <View style={styles.messageBox}>
-          <Text style={styles.message}>{message}</Text>
-          {game.complete ? (
-            <Pressable accessibilityRole="button" onPress={handleRestart} style={styles.replayButton}>
-              <Text style={styles.replayText}>Play again</Text>
-            </Pressable>
-          ) : null}
-        </View>
-
-        <View style={styles.toolbar}>
-          <ToolButton icon="↶" label="Undo" disabled={game.moves.length === 0} onPress={handleUndo} />
-          <ToolButton
-            icon="◐"
-            label={previewSide ? "Return" : "Preview"}
-            active={previewSide !== null}
-            onPress={handlePreview}
-          />
-          <ToolButton icon="✦" label="Hint" disabled={game.complete} onPress={handleHint} />
-        </View>
+        {footer}
       </View>
     </SafeAreaView>
   );
@@ -212,64 +366,105 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-    paddingHorizontal: space.lg,
+    width: "100%",
+    maxWidth: 980,
+    alignSelf: "center",
     paddingTop: space.sm,
     paddingBottom: space.sm
+  },
+  screenWide: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: space.xl
+  },
+  playArea: {
+    flex: 1
+  },
+  playAreaWide: {
+    minWidth: 520
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between"
   },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: space.sm
+  },
   collection: {
     color: colors.inkSoft,
-    fontFamily: type.body,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.4,
-    textTransform: "uppercase"
+    fontFamily: type.bodyBold,
+    fontSize: 11,
+    letterSpacing: 1.45
   },
   title: {
-    marginTop: 2,
+    marginTop: 1,
     color: colors.ink,
-    fontFamily: type.brand,
+    fontFamily: type.brandHeavy,
+    fontSize: 30,
+    lineHeight: 34,
+    letterSpacing: -0.7
+  },
+  titleCompact: {
     fontSize: 27,
-    fontWeight: "800",
-    letterSpacing: -0.5
+    lineHeight: 31
   },
   sideBadge: {
-    minWidth: 92,
-    minHeight: 44,
-    paddingHorizontal: 14,
+    minWidth: 104,
+    minHeight: 52,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: radius.md
+  },
+  sideEyebrow: {
+    color: colors.inkSoft,
+    fontFamily: type.bodyBold,
+    fontSize: 8,
+    letterSpacing: 1.05
+  },
+  sideNameRow: {
+    marginTop: 2,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.coralSoft,
-    borderRadius: radius.pill
-  },
-  sideBadgeBack: {
-    backgroundColor: colors.irisSoft
+    gap: 7
   },
   sideDot: {
-    width: 10,
-    height: 10,
-    borderRadius: radius.pill,
-    backgroundColor: colors.coral
-  },
-  sideDotBack: {
-    backgroundColor: colors.iris
+    width: 9,
+    height: 9,
+    borderRadius: radius.pill
   },
   sideText: {
     color: colors.ink,
-    fontFamily: type.brand,
+    fontFamily: type.bodyBold,
     fontSize: 12,
-    fontWeight: "800",
-    letterSpacing: 1.1
+    letterSpacing: 1.05
+  },
+  progressGroup: {
+    marginTop: space.md
+  },
+  progressLabels: {
+    marginBottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  progressLabel: {
+    color: colors.inkSoft,
+    fontFamily: type.bodyBold,
+    fontSize: 9,
+    letterSpacing: 1.2
+  },
+  progressNumber: {
+    color: colors.ink,
+    fontFamily: type.bodyBold,
+    fontSize: 11
   },
   progressTrack: {
-    height: 6,
-    marginTop: space.md,
+    height: 7,
     overflow: "hidden",
     backgroundColor: colors.linenDeep,
     borderRadius: radius.pill
@@ -281,38 +476,93 @@ const styles = StyleSheet.create({
   },
   boardRegion: {
     flex: 1,
+    minHeight: 276,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 280
+    paddingVertical: space.sm
+  },
+  boardRegionWide: {
+    paddingBottom: 0
+  },
+  footer: {
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center"
+  },
+  footerWide: {
+    width: 300,
+    justifyContent: "center"
   },
   messageBox: {
-    minHeight: 68,
+    minHeight: 58,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: space.sm
   },
   message: {
     color: colors.inkSoft,
-    fontFamily: type.body,
+    fontFamily: type.bodySemibold,
     fontSize: 15,
-    fontWeight: "600",
     lineHeight: 21,
     textAlign: "center"
   },
+  completionCard: {
+    minHeight: 76,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF7DF",
+    borderWidth: 1,
+    borderColor: "#E5C97A",
+    borderRadius: radius.md
+  },
+  completionSeal: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.gold,
+    borderRadius: radius.pill
+  },
+  completionMark: {
+    color: colors.ink,
+    fontFamily: type.bodyBold,
+    fontSize: 22
+  },
+  completionCopy: {
+    flex: 1,
+    paddingHorizontal: 11
+  },
+  completionTitle: {
+    color: colors.ink,
+    fontFamily: type.brand,
+    fontSize: 17
+  },
+  completionText: {
+    marginTop: 1,
+    color: colors.inkSoft,
+    fontFamily: type.bodyMedium,
+    fontSize: 11,
+    lineHeight: 15
+  },
   replayButton: {
-    minHeight: 44,
-    marginTop: space.sm,
-    paddingHorizontal: space.lg,
+    minWidth: 58,
+    minHeight: 48,
+    paddingHorizontal: 12,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.ink,
     borderRadius: radius.pill
   },
+  replayPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.97 }]
+  },
   replayText: {
     color: colors.white,
-    fontFamily: type.brand,
-    fontSize: 14,
-    fontWeight: "800"
+    fontFamily: type.bodyBold,
+    fontSize: 12
   },
   toolbar: {
     flexDirection: "row",
@@ -320,39 +570,81 @@ const styles = StyleSheet.create({
     paddingTop: space.sm
   },
   toolButton: {
-    minHeight: 62,
+    minWidth: 48,
+    minHeight: 64,
     flex: 1,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.white,
     borderWidth: 1,
-    borderColor: colors.linenDeep,
-    borderRadius: radius.md
+    borderColor: colors.linenShadow,
+    borderRadius: radius.md,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 7,
+    elevation: 2
   },
   toolButtonActive: {
     backgroundColor: colors.ink,
     borderColor: colors.ink
   },
   toolButtonDisabled: {
-    opacity: 0.38
+    opacity: 0.34
   },
   toolButtonPressed: {
-    transform: [{ scale: 0.96 }]
-  },
-  toolIcon: {
-    color: colors.ink,
-    fontSize: 21,
-    lineHeight: 23,
-    fontWeight: "700"
+    opacity: 0.82,
+    transform: [{ translateY: 1 }, { scale: 0.98 }]
   },
   toolLabel: {
-    marginTop: 3,
+    marginTop: 4,
     color: colors.inkSoft,
-    fontFamily: type.body,
-    fontSize: 12,
-    fontWeight: "700"
+    fontFamily: type.bodyBold,
+    fontSize: 11
   },
   toolTextActive: {
     color: colors.white
+  },
+  rotateScreen: {
+    flex: 1,
+    padding: space.xl,
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  rotateHoop: {
+    width: 86,
+    height: 86,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 10,
+    borderColor: colors.wood,
+    borderRadius: radius.pill,
+    backgroundColor: colors.cloth,
+    transform: [{ rotate: "-12deg" }]
+  },
+  rotateNeedle: {
+    width: 4,
+    height: 48,
+    backgroundColor: colors.iris,
+    borderRadius: radius.pill,
+    transform: [{ rotate: "42deg" }]
+  },
+  rotateTitle: {
+    marginTop: space.lg,
+    color: colors.ink,
+    fontFamily: type.brandHeavy,
+    fontSize: 25,
+    textAlign: "center"
+  },
+  rotateText: {
+    maxWidth: 420,
+    marginTop: space.sm,
+    color: colors.inkSoft,
+    fontFamily: type.bodyMedium,
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: "center"
   }
 });

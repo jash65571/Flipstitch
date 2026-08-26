@@ -26,11 +26,11 @@ We start with one polished level, not a large menu. It must prove five things:
 - Coral thread on the front and iris thread on the back.
 - Soft black text, restrained gold and teal accents.
 - Large touch targets around small visual holes.
-- Brand type target: Bricolage Grotesque.
-- Interface type target: Manrope.
-- Use system fonts until the licensed font assets are bundled and tested.
+- Bricolage Grotesque for the level title and completion reveal.
+- Manrope for controls, state, progress, and instructions.
+- Both font families are bundled for offline use under the SIL Open Font License.
 
-The puzzle takes most of the screen. The only play controls are Undo, Preview, and Hint. Reduced motion replaces the flip with a quick side swap.
+The puzzle takes most of the screen. The only play controls are Undo, Preview, and Hint. Reduced motion replaces the flip with an instant side swap.
 
 ## Growth path
 

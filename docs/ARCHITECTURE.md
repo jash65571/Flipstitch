@@ -6,7 +6,7 @@ FlipStitch uses Expo SDK 57, React Native, TypeScript, and npm.
 
 This is a strong fit because the game is a focused 2D touch puzzle. It also keeps Android and iOS in one codebase. npm avoids adding another package manager requirement for Windows contributors.
 
-The current board uses SVG for fast iteration. The rule engine has no React Native imports. We can move the renderer to React Native Skia when textile effects and richer motion justify it, without rewriting level rules.
+The current board uses SVG for fast iteration. The production-slice audit kept SVG because gradients, weave patterns, thread highlights, a visible needle, and smooth transforms all fit the current renderer. Skia would add binary and maintenance cost without a measured gain on this level. The rule engine has no React Native imports, so a later renderer change still does not affect level rules.
 
 ## Boundaries
 
@@ -45,3 +45,11 @@ That model gives us deterministic validation, hints, undo, replay, and future pr
 - Keep the first playable frame fast and work offline.
 - Test small phones, tablets, safe areas, large text, reduced motion, and screen readers.
 - Profile frame time, memory, heat, and battery before soft launch.
+
+## Vertical-slice runtime choices
+
+- Fonts load from local package assets through `expo-font`; no network request is required.
+- The side swap locks board input until its midpoint and settle animation finish.
+- Reduced motion commits the same state change with no transform animation.
+- Small-phone, large-phone, large-text, phone-landscape, and tablet-landscape layout rules are pure and unit tested.
+- Android, iOS, and web export checks run before delivery.

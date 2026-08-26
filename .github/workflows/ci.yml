@@ -23,10 +23,22 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Test puzzle rules
         run: npm test
 
       - name: Check TypeScript
         run: npm run typecheck
+
+      - name: Check Expo project health
+        run: npm run doctor
+
+      - name: Bundle Android
+        run: EXPO_NO_TELEMETRY=1 npm run export:android
+
+      - name: Bundle iOS
+        run: EXPO_NO_TELEMETRY=1 npm run export:ios
+
+      - name: Bundle web preview
+        run: EXPO_NO_TELEMETRY=1 npm run export:web

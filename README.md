@@ -32,7 +32,10 @@ Then press `a` for Android or `i` for iOS. The web target is useful for quick la
 ```bash
 npm test
 npm run typecheck
+npm run doctor
 ```
+
+The milestone branch also exports Android, iOS, and web bundles in CI. Bricolage Grotesque and Manrope are bundled for offline use.
 
 ## Product rules
 
@@ -43,3 +46,5 @@ npm run typecheck
 - Monetization comes after retention testing, never before the core is proven.
 
 See [docs/PRODUCT.md](docs/PRODUCT.md) for the product plan and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for technical choices.
+
+UI sources and the vertical-slice test matrix live in [docs/UI_RESEARCH.md](docs/UI_RESEARCH.md) and [docs/VERTICAL_SLICE_QA.md](docs/VERTICAL_SLICE_QA.md).
