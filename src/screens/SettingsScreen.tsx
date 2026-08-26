@@ -287,8 +287,8 @@ export function SettingsScreen() {
         <View style={styles.card}>
           <Text maxFontSizeMultiplier={1.7} style={styles.aboutLine}>FlipStitch 0.1.0 · feel and playtest proof</Text>
           <Text maxFontSizeMultiplier={1.7} style={styles.aboutDetail}>
-            Typefaces Bricolage Grotesque and Manrope are bundled under the SIL Open Font License 1.1. All sound effects are
-            original, generated in-repo, and owned by the project. See About text below and assets/sounds/README.md.
+            Typefaces Fraunces and Atkinson Hyperlegible Next are bundled under the SIL Open Font License 1.1. All sound
+            effects are original, generated in-repo, and owned by the project. See assets/licenses and assets/sounds/README.md.
           </Text>
           <Pressable accessibilityRole="button" accessibilityLabel="Preview a selection sound" onPress={() => feedback.emit("gallerySelected")} style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}>
             <Text maxFontSizeMultiplier={1.5} style={styles.actionButtonText}>Preview sound</Text>
