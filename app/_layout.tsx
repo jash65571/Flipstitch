@@ -12,8 +12,11 @@ import * as SystemUI from "expo-system-ui";
 import { useEffect, useState } from "react";
 import { AccessibilityInfo } from "react-native";
 
-import { colors } from "@/theme/tokens";
+import { FeedbackProvider } from "@/feedback/FeedbackProvider";
+import { PlaytestProvider } from "@/playtest/PlaytestProvider";
 import { ProgressProvider } from "@/progress/ProgressProvider";
+import { SettingsProvider } from "@/settings/SettingsProvider";
+import { colors } from "@/theme/tokens";
 
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -49,9 +52,15 @@ export default function RootLayout() {
   }
 
   return (
-    <ProgressProvider>
-      <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "fade", contentStyle: { backgroundColor: colors.linen } }} />
-    </ProgressProvider>
+    <SettingsProvider>
+      <PlaytestProvider>
+        <FeedbackProvider>
+          <ProgressProvider>
+            <StatusBar style="dark" />
+            <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "fade", contentStyle: { backgroundColor: colors.linen } }} />
+          </ProgressProvider>
+        </FeedbackProvider>
+      </PlaytestProvider>
+    </SettingsProvider>
   );
 }

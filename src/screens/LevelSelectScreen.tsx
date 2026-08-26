@@ -3,6 +3,7 @@ import type { DimensionValue } from "react-native";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useFeedback } from "@/feedback/FeedbackProvider";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
 import { levels } from "@/game/levels";
 import type { Level } from "@/game/types";
@@ -61,11 +62,13 @@ export function LevelSelectScreen() {
   const router = useRouter();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
   const { data, loading, storageWarning, unlockedCount, resumeId, isUnlocked, startLevel } = useProgress();
+  const feedback = useFeedback();
   const { contentWidth, cardWidthPercent: cardWidth } = getGalleryLayout(viewportWidth, fontScale);
   const completedCount = Object.keys(data.completed).length;
   const resumeIndex = levels.findIndex((level) => level.id === resumeId);
 
   function openLevel(levelId: string) {
+    feedback.emit("gallerySelected");
     startLevel(levelId);
     router.push({ pathname: "/level/[id]", params: { id: levelId } });
   }
@@ -74,8 +77,22 @@ export function LevelSelectScreen() {
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right", "bottom"]}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { width: contentWidth }]} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Text maxFontSizeMultiplier={1.5} style={styles.eyebrow}>FLIPSTITCH COLLECTION 01</Text>
-          <Text maxFontSizeMultiplier={1.6} style={styles.title}>Day & Night</Text>
+          <View style={styles.heroRow}>
+            <View style={styles.heroCopy}>
+              <Text maxFontSizeMultiplier={1.5} style={styles.eyebrow}>FLIPSTITCH COLLECTION 01</Text>
+              <Text maxFontSizeMultiplier={1.6} style={styles.title}>Day & Night</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
+              accessibilityHint="Sound, haptics, playtest data, and about information"
+              onPress={() => router.push("/settings")}
+              style={({ pressed }) => [styles.settingsButton, pressed && styles.settingsPressed]}
+            >
+              <Text accessibilityElementsHidden style={styles.settingsGlyph}>⚙</Text>
+              <Text maxFontSizeMultiplier={1.4} style={styles.settingsLabel}>Settings</Text>
+            </Pressable>
+          </View>
           <Text maxFontSizeMultiplier={1.9} style={styles.subtitle}>Ten crafted hoops. One thread crosses every side.</Text>
         </View>
 
@@ -141,6 +158,24 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.linen },
   scrollContent: { alignSelf: "center", paddingTop: space.lg, paddingBottom: space.xl },
   hero: { marginBottom: space.lg },
+  heroRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: space.sm },
+  heroCopy: { flex: 1, minWidth: 0 },
+  settingsButton: {
+    minWidth: 48,
+    minHeight: 48,
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.cloth,
+    borderWidth: 1,
+    borderColor: colors.linenShadow,
+    borderRadius: radius.pill
+  },
+  settingsPressed: { opacity: 0.8, transform: [{ scale: 0.98 }] },
+  settingsGlyph: { color: colors.ink, fontFamily: type.bodyMedium, fontSize: 16, lineHeight: 18 },
+  settingsLabel: { color: colors.ink, fontFamily: type.bodyBold, fontSize: 11 },
   eyebrow: { color: colors.tealDeep, fontFamily: type.bodyBold, fontSize: 10, letterSpacing: 1.45 },
   title: { marginTop: 3, color: colors.ink, fontFamily: type.brandHeavy, fontSize: 38, lineHeight: 43, letterSpacing: -1 },
   subtitle: { maxWidth: 540, marginTop: 5, color: colors.inkSoft, fontFamily: type.bodyMedium, fontSize: 15, lineHeight: 22 },

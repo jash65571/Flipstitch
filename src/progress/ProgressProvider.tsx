@@ -24,6 +24,7 @@ type ProgressContextValue = {
   isUnlocked: (levelId: string) => boolean;
   startLevel: (levelId: string) => void;
   completeLevel: (levelId: string, moves: number) => void;
+  resetProgress: () => void;
 };
 
 const ProgressContext = createContext<ProgressContextValue | null>(null);
@@ -65,6 +66,12 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     (levelId: string, moves: number) => update((current) => recordCompletion(current, levelId, moves)),
     [update]
   );
+  const resetProgress = useCallback(() => {
+    setData(emptyProgress);
+    void AsyncStorage.removeItem(STORAGE_KEY).catch(() => {
+      setStorageWarning("Progress reset, but the saved copy could not be removed on this device.");
+    });
+  }, []);
 
   const value = useMemo<ProgressContextValue>(() => ({
     data,
@@ -74,8 +81,9 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     resumeId: resumeLevelId(data, levels),
     isUnlocked: (levelId) => isLevelUnlocked(data, levels, levelId),
     startLevel,
-    completeLevel
-  }), [completeLevel, data, loading, startLevel, storageWarning]);
+    completeLevel,
+    resetProgress
+  }), [completeLevel, data, loading, resetProgress, startLevel, storageWarning]);
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>;
 }

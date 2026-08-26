@@ -1,4 +1,3 @@
-import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
@@ -12,10 +11,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
+import { useFeedback } from "@/feedback/FeedbackProvider";
 import { HoopBoard } from "@/components/HoopBoard";
 import { createGame, nextHint, oppositeSide, playMove, progress, undoMove } from "@/game/engine";
 import { targetEdges } from "@/game/solver";
 import type { GameState, Level, Side } from "@/game/types";
+import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { getGameLayout } from "@/screens/layout";
 import { colors, radius, space, type } from "@/theme/tokens";
 
@@ -103,6 +104,8 @@ export function GameScreen({
 }: GameScreenProps) {
   const { width, height, fontScale } = useWindowDimensions();
   const { boardSize, compact, horizontal, pagePadding, phoneLandscape } = getGameLayout(width, height, fontScale);
+  const feedback = useFeedback();
+  const playtest = usePlaytest();
 
   const [game, setGame] = useState<GameState>(() => createGame(level));
   const [previewSide, setPreviewSide] = useState<Side | null>(null);
@@ -237,13 +240,30 @@ export function GameScreen({
     if (!result.ok) {
       say(result.reason === "same-hole" ? "The needle is already here." : "That line is not available on this side.");
       showInvalidFeedback();
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+      feedback.emit("invalidMove");
+      playtest.track({
+        name: "invalid_stitch",
+        levelId: level.id,
+        activeSide: game.activeSide,
+        moveCount: placedStitchCount,
+        invalidReason: result.reason
+      });
       return;
     }
+
+    feedback.emit("stitchPlaced");
+    const nextMoveCount = placedStitchCount + 1;
+    playtest.track({
+      name: placedStitchCount === 0 ? "first_valid_stitch" : "valid_stitch",
+      levelId: level.id,
+      activeSide: game.activeSide,
+      moveCount: nextMoveCount
+    });
 
     animateSwap(() => {
       setGame(result.state);
       setPreviewSide(null);
+      feedback.emit("sideChanged");
       say(
         result.completedNow
           ? "Thread complete. Both sides are stitched."
@@ -251,13 +271,12 @@ export function GameScreen({
       );
     });
 
-    setPlacedStitchCount((count) => count + 1);
+    setPlacedStitchCount(nextMoveCount);
 
     if (result.completedNow) {
-      onComplete(placedStitchCount + 1);
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    } else {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      feedback.emit("levelCompleted");
+      playtest.trackOnce({ name: "level_completed", levelId: level.id, moveCount: nextMoveCount, completed: true });
+      onComplete(nextMoveCount);
     }
   }
 
@@ -269,7 +288,8 @@ export function GameScreen({
       setHintNode(null);
       say("Stitch removed. The needle and side are restored.");
     });
-    void Haptics.selectionAsync().catch(() => undefined);
+    feedback.emit("undo");
+    playtest.track({ name: "undo_used", levelId: level.id, moveCount: placedStitchCount });
   }
 
   function handlePreview() {
@@ -277,7 +297,9 @@ export function GameScreen({
     animateSwap(() => {
       setPreviewSide((current) => (current ? null : oppositeSide(game.activeSide)));
       setHintNode(null);
+      feedback.emit("sideChanged");
     });
+    playtest.track({ name: "preview_used", levelId: level.id });
   }
 
   function handleHint() {
@@ -286,7 +308,8 @@ export function GameScreen({
     setPreviewSide(null);
     setHintNode(hint);
     say(hint ? `Hole ${hint.toUpperCase()} keeps a full solution open.` : "This path is blocked. Undo the last stitch and try another branch.");
-    void Haptics.selectionAsync().catch(() => undefined);
+    feedback.emit("hint");
+    playtest.track({ name: "hint_used", levelId: level.id });
   }
 
   function handleRestart() {
@@ -296,6 +319,7 @@ export function GameScreen({
     setPlacedStitchCount(0);
     progressValue.setValue(0);
     say(level.hintText ?? "Fresh thread. Choose a glowing hole to begin.");
+    playtest.track({ name: "restart_used", levelId: level.id });
   }
 
   if (phoneLandscape) {
