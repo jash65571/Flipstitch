@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "FlipStitch",
+    "slug": "flipstitch",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "flipstitch",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F1E8",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jashpatel.flipstitch"
+    },
+    "android": {
+      "package": "com.jashpatel.flipstitch",
+      "predictiveBackGestureEnabled": true,
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
