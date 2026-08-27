@@ -1,5 +1,16 @@
 # Milestone 8 QA — Collection 02, Multi-Collection UX, Content Proof
 
+> **Superseded in part by Milestone 8.1.** Post-milestone inspection found
+> two serious defects this document did not catch: seven Collection 02
+> levels were exact topology clones of Collection 01 levels (or of each
+> other), and Preview could show a side that contradicted its own status
+> copy. Both are corrected — see `docs/MILESTONE-8-1-QA.md`,
+> `docs/COLLECTION-02-DESIGN.md`, and `docs/PREVIEW-INTERACTION.md`. The
+> record below is left intact as what was actually known and reported at
+> the time; do not treat its "0 invariant violations" or content-proof
+> claims as still describing the shipped content without reading the 8.1
+> documents first.
+
 ## Automated checks
 
 | Command | Result |

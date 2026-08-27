@@ -380,11 +380,13 @@ function PeekLayer({ level, peekSide, activeSide, size }: { level: Level; peekSi
         })}
       </Svg>
 
-      <View style={[styles.peekTab, { backgroundColor: sideThread.deep }]} pointerEvents="none">
-        <Text style={styles.peekTabText}>{peekingStatus(peekSide)}</Text>
-      </View>
-      <View style={styles.peekAnchor} pointerEvents="none">
-        <Text style={styles.peekAnchorText}>{needleAnchorNote(activeSide)}</Text>
+      <View style={styles.peekTabStack} pointerEvents="none">
+        <View style={[styles.peekTab, { backgroundColor: sideThread.deep }]}>
+          <Text style={styles.peekTabText}>{peekingStatus(peekSide)}</Text>
+        </View>
+        <View style={styles.peekAnchor}>
+          <Text style={styles.peekAnchorText}>{needleAnchorNote(activeSide)}</Text>
+        </View>
       </View>
     </View>
   );
@@ -498,10 +500,18 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 14
   },
-  peekTab: {
+  // Both Peek pills stack above the panel, well clear of the base layer's
+  // own PLAYING pill at the bottom of the hoop — Milestone 8.1 QA found the
+  // two labels overlapping (and one hiding the other) when the anchor note
+  // sat at the panel's bottom edge instead.
+  peekTabStack: {
     position: "absolute",
-    top: -14,
+    top: -34,
     alignSelf: "center",
+    alignItems: "center",
+    gap: 6
+  },
+  peekTab: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: radius.pill
@@ -513,9 +523,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1
   },
   peekAnchor: {
-    position: "absolute",
-    bottom: -14,
-    alignSelf: "center",
     paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: colors.ink,

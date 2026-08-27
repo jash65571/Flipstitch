@@ -159,3 +159,20 @@ screen. The gallery's running thread passes straight through a chapter divider;
 the divider carries a stitched chapter mark, a Fraunces title, one line of
 subtitle, and a brass count. A finished chapter takes the same completion seal
 a finished hoop does. No chapter tabs, no carousels, no separate chapter screen.
+
+## Peek is inspection, not play (added Milestone 8.1)
+
+FlipStitch's whole fantasy depends on the player always knowing which side
+the needle is actually on. Milestone 8's Preview broke that rule: it reused
+the real flip's hoop-turn animation and sound for a temporary, read-only
+inspection, so the same visual and audio language meant two different
+things depending on invisible context. That is a fantasy-breaking bug, not
+a cosmetic one — see `docs/PREVIEW-INTERACTION.md` for the fix.
+
+The design rule going forward: **only a real stitch turns the hoop.**
+Anything that lets the player look at information without committing a
+stitch (Peek today; any future equivalent) must use a visibly different
+grammar — a layered, muted, read-only panel, never the hoop-flip transform,
+never the hoop-flip sound. `PLAYING · <side>` is a permanent fixture of the
+hoop, stitched into the wood, never covered or replaced by a temporary
+state.

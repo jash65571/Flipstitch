@@ -67,26 +67,36 @@ Continues Chapter 1's arc rather than resetting; its opener (Bramble Fork,
 because it introduces a second brand-new concept — see the `pacingNote` on
 its first entry.
 
-## The ten levels
+## The ten levels (Milestone 8.1 revision)
+
+> **This section was rewritten in Milestone 8.1.** The version of this table
+> shipped in Milestone 8 described seven of these ten levels as reusing
+> Collection 01 graphs "with a fresh layout and framing." On inspection that
+> was not framing — it was the same graph under renamed holes, which
+> `src/content/topology.ts` (built in 8.1) confirms is an exact structural
+> duplicate, not a new puzzle. All seven were redesigned. See
+> `docs/MILESTONE-8-1-QA.md` for the full before/after audit, and the
+> "Corrected in Milestone 8.1" note below each entry that changed.
 
 | # | Title | Chapter | Role | Concepts | Score | Tier | Solutions | Trap-capable | Max consequence depth |
 |---|---|---|---|---|---|---|---|---|---|
 | 11 | Root Knot | Tangled Root | teach | nested-obligation | 23 | Easy | 4 | no | 0 |
 | 12 | Twin Roots | Tangled Root | practice | nested-obligation, ordering-discipline | 30 | Easy | 6 | no | 0 |
-| 13 | Bark Hollow | Tangled Root | twist | asymmetric-hub, dangerous-fork | 39 | Moderate | 1 (unique) | yes | 5 |
-| 14 | Deep Taproot | Tangled Root | combine | asymmetric-hub, nested-obligation, ordering-discipline, hub | 60 | Tricky | 2 | yes | 4 |
+| 13 | Bark Hollow | Tangled Root | twist | asymmetric-hub, dangerous-fork | 55 | Tricky | 2 | yes | 2 |
+| 14 | Deep Taproot | Tangled Root | combine | asymmetric-hub, nested-obligation, ordering-discipline, hub | 42 | Moderate | 4 | yes | 2 |
 | 15 | Old Growth | Tangled Root | capstone | nested-obligation, asymmetric-hub, ordering-discipline | 66 | Tricky | 1 (unique) | yes | 5 |
-| 16 | Bramble Fork | Bramble Snare | teach | converging-openings | 31 | Easy | 6 | no | 0 |
-| 17 | Thicket Path | Bramble Snare | practice | converging-openings, shared-hole | 64 | Tricky | 2 | yes | 5 |
-| 18 | Twin Thorns | Bramble Snare | pressure | interacting-runners, runner | 60 | Tricky | 2 | yes | 4 |
-| 19 | Snared Vine | Bramble Snare | combine | interacting-runners, converging-openings | 64 | Tricky | 2 | yes | 5 |
-| 20 | Knot's End | Bramble Snare | capstone | interacting-runners, converging-openings, multi-region, linked-return | 80 | Expert | 1 (unique) | yes | 8 |
+| 16 | Bramble Fork | Bramble Snare | teach | converging-openings | 42 | Moderate | 24 | no | 0 |
+| 17 | Thicket Path | Bramble Snare | practice | converging-openings, shared-hole | 57 | Tricky | 2 | yes | 3 |
+| 18 | Twin Thorns | Bramble Snare | pressure | interacting-runners, runner | 69 | Tricky | 12 | yes | 2 |
+| 19 | Snared Vine | Bramble Snare | combine | interacting-runners, converging-openings | 45 | Moderate | 4 | yes | 3 |
+| 20 | Knot's End | Bramble Snare | capstone | interacting-runners, converging-openings, multi-region, linked-return | 84 | Expert | 2 | yes | 8 |
 
-Highest measured consequence depth in the collection: **8** (Knot's End,
-matching Master Sampler's depth exactly — the collection capstone). Seven of
-ten levels are trap-capable; the three that are not (Root Knot, Twin Roots,
-Bramble Fork) are the two `teach` entries plus Chapter 2's own opener, kept
-safe on purpose per the curriculum's "danger follows safety" rule.
+Highest measured consequence depth in the collection: **8** (Knot's End, the
+collection capstone — it now legitimately exceeds Master Sampler's own
+score of 80, see below). Seven of ten levels are trap-capable; the three
+that are not (Root Knot, Twin Roots, Bramble Fork) are the two `teach`
+entries plus Chapter 2's own opener, kept safe on purpose per the
+curriculum's "danger follows safety" rule.
 
 ## Why every level exists
 
@@ -97,36 +107,56 @@ safe on purpose per the curriculum's "danger follows safety" rule.
 - **Twin Roots** — the same nested shape at slightly greater depth (one more
   intermediate hole), plus a second safe wing, so the player sees the shape
   repeat before it is ever punished.
-- **Bark Hollow** — the first hub whose front-side and back-side branching
-  genuinely differ. Reuses the Forked Needle topology (a proven, solver-clean
-  shape from Collection 01) with a fresh layout and framing: read the hub
-  from both flips before committing.
-- **Deep Taproot** — combines an asymmetric hub with two safe nested loops
-  and one true runner; the player must now tell "this loop returns" apart
-  from "this lane never comes back" using both new ideas at once.
-- **Old Growth (capstone)** — a nested loop feeding directly into a hub whose
-  near lane and far lane look identical until you have committed. The
-  chapter's hardest level (66), closing the first learning arc.
-- **Bramble Fork** — three genuinely safe openings from one hub, all funneling
-  back through that same hub. Deliberately trap-free: this is the shape of
-  converging openings taught before it is made dangerous.
-- **Thicket Path** — the same converging-opening shape, now with one of the
-  three lanes a true runner. Reuses Laced Window's topology (proven,
-  solver-clean) with new geometry and framing.
-- **Twin Thorns** — the pure interacting-runners case: two safe loops off one
-  hub, and a third spoke that runs into the thicket and never returns.
-  Symmetry with the safe loops is the trap; reading which spoke is which is
-  the lesson.
-- **Snared Vine** — reuses Thicket Path's exact structure to prove the player
-  now reads the same shape without full guidance (guidance drops from
-  `reduced` to `minimal`), combined with the interacting-runners framing from
-  Twin Thorns.
-- **Knot's End (capstone)** — four clusters, each one of the collection's
-  ideas in miniature, joined by bridges. Reuses Master Sampler's exact
-  topology (Collection 01's proven hardest shape) at the same measured
-  score (80) and consequence depth (8), so the collection closes at the same
-  ceiling Collection 01 did — proof the architecture supports a second
-  collection reaching the same peak without inventing new difficulty.
+- **Bark Hollow** *(corrected in Milestone 8.1 — was an exact clone of
+  Forked Needle)* — a hub with three spokes, two of which return to the hub
+  and one of which (`c-d`) leads only forward to a dead end. The trap is
+  genuinely readable: the hub offers three choices, but only one of them
+  costs you the other two if taken early.
+- **Deep Taproot** *(corrected — was an exact clone of Orbit Bloom, and also
+  isomorphic to the shipped Twin Thorns)* — a hub with a safe wing, a nested
+  dive-and-surface pair, and a runner. Combines nested-obligation and a
+  trap-capable hub in one graph distinct from Bark Hollow's.
+- **Old Growth (capstone)** — unchanged: a nested loop feeding directly into
+  a hub whose near lane and far lane look identical until you have
+  committed. The chapter's hardest level (66), closing the first learning
+  arc.
+- **Bramble Fork** *(corrected — was an exact clone of Butterfly Turn)* —
+  now four genuinely safe openings (not three) from one hub, all funneling
+  back through that same hub. Still deliberately trap-free.
+- **Thicket Path** *(corrected — was an exact clone of Laced Window, and the
+  shipped Snared Vine was in turn an exact clone of this)* — two safe wings
+  off a hub, and a third path that runs three holes deep into the thicket
+  before dead-ending — a longer, more deliberate "point of no return" than
+  the single-hop runners elsewhere in the collection.
+- **Twin Thorns** *(corrected — was isomorphic to Orbit Bloom/Deep Taproot's
+  old graph)* — two safe wings plus a matched pair: a two-hop loop that
+  *looks* like a runner but safely returns, and a genuine one-hop runner
+  that doesn't. The twin symmetry between the loop and the runner is the
+  lesson, not just the flavor text.
+- **Snared Vine** *(corrected — was an exact clone of the shipped Thicket
+  Path)* — combines a safe wing, the twin loop-vs-runner idea from Twin
+  Thorns, and a longer three-hop runner, so the player must recognize both
+  prior ideas operating in one hoop, on a graph distinct from both of them.
+- **Knot's End (capstone)** *(corrected — was an exact clone of Master
+  Sampler)* — four clusters (a nested dive, an asymmetric multi-wing hub, a
+  converging-opening cluster, and a runner cluster) joined by bridges, on a
+  16-hole graph one wing larger than Master Sampler's 15-hole chain and
+  structurally distinct from it. It measures 84 — four points *above*
+  Master Sampler's 80. Milestone 8's design note framed matching Master
+  Sampler's exact score as "proof the architecture supports a second
+  collection reaching the same peak" — that framing depended on literally
+  cloning the graph, which is the bug this milestone fixed. A later
+  collection's capstone legitimately scoring higher than an earlier one's is
+  expected content growth, not a broken invariant (see the updated test in
+  `src/game/difficulty.test.ts`).
+
+Two pairs in the corrected collection are flagged by the topology
+detector as `near` (advisory, not exact/mirrored — reviewed, not silenced):
+`deep-taproot-14` / `thicket-path-17` and `orbit-bloom-07` / `snared-vine-19`
+share a similar degree signature (both are small hub-plus-branch graphs of
+the same size) without being isomorphic. This is the expected shape of the
+`near` category: coincidental structural resemblance between genuinely
+different puzzles, not a hidden duplicate.
 
 ## Fair traps
 

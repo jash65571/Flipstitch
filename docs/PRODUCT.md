@@ -184,3 +184,9 @@ anything.
 - No copied level art or close competitor skin.
 - UI and store research happens before each major feature set.
 - Accessibility, battery use, device heat, and low-end Android performance are release checks.
+- Every shipped level must be structurally new content, not a renamed
+  reskin of an existing graph — enforced by `npm run analyze:levels`'
+  topology duplicate check since Milestone 8.1 (`docs/COLLECTION-02-DESIGN.md`).
+- A temporary inspection state (Peek) must never be visually or
+  semantically confusable with a real, committed game-state change
+  (`docs/PREVIEW-INTERACTION.md`).

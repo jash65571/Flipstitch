@@ -408,5 +408,29 @@ Authoring rules:
 - [ ] Hints: concept reveals no hole; exact hole is always legal; stranded
       threads point to Undo.
 - [ ] Played in the real UI: intended solve, an alternative route, a wrong
-      route into the trap, Undo, Restart, Preview, completion, replay.
+      route into the trap, Undo, Restart, Peek, completion, replay.
 - [ ] Screen-reader and large-text passes.
+
+## 20. Topology proof (added Milestone 8.1)
+
+Reusing a proven graph shape under a new name is not new content. Before a
+level ships:
+
+- [ ] Run `npm run analyze:levels` and confirm the topology report shows
+      `0 unapproved` exact/mirrored duplicates. It compares every level's
+      graph (`src/content/topology.ts`) under hole renaming, coordinate
+      movement, and front/back-respecting isomorphism — not by eyeballing
+      hole counts or scores.
+- [ ] If the level shares a *sub-motif* with an existing level (a wing, a
+      nested dive, a hub) that is fine — the detector checks whole-graph
+      isomorphism, not motif reuse. What must never happen is the level's
+      *entire* graph matching another level's under some relabeling.
+- [ ] A `near` (advisory) finding does not block shipping, but review it: is
+      the resemblance coincidental (different graphs that happen to share a
+      degree signature), or did the level get designed by lightly editing an
+      existing one? Only the former is acceptable without redesign.
+- [ ] Milestone 8.1 background: Collection 02 originally shipped seven levels
+      that were exact topology clones of Collection 01 levels (or of each
+      other) under renamed holes — see `docs/COLLECTION-02-DESIGN.md`. This
+      checklist item exists because that shipped past every check that
+      existed before it.

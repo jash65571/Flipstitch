@@ -188,3 +188,29 @@ third collection requires no route or screen change, only a new entry in
 needed no changes at all: `src/progress/model.ts` was already a pure
 function of flat catalog order, so a second collection appended after the
 first unlocks and resumes correctly with zero migration code.
+
+## Peek state model (added Milestone 8.1)
+
+`src/game/peek.ts` holds the entire inspection state machine as pure
+functions over `Side | null` — it has no dependency on `GameState`
+(`src/game/types.ts`) and cannot read or mutate it. `GameScreen.tsx` holds
+`peekSide` as a `useState` sibling to `game`, never derived from it and
+never folded into it (Milestone 8's bug was exactly that folding —
+`visibleSide = previewSide ?? game.activeSide`). `HoopBoard.tsx` renders two
+independent layers (`PlayLayer`, always `game.activeSide`; `PeekLayer`, only
+when peeking) instead of one side-swappable layer. See
+`docs/PREVIEW-INTERACTION.md` for the full interaction design.
+
+## Topology fingerprinting (added Milestone 8.1)
+
+`src/content/topology.ts` provides a dependency-free canonical graph
+labeling (individualization-refinement, exhaustive for FlipStitch's small
+sparse level graphs) that detects EXACT and MIRRORED topology duplicates
+across the catalog under hole renaming, coordinate movement, and
+front/back-respecting isomorphism. `src/content/duplicates.ts` wraps it into
+a catalog-wide pass/fail policy, wired into `npm run analyze:levels`
+(`scripts/analyze-levels.mjs`), which now fails the build on any unapproved
+exact/mirrored duplicate. This exists because Milestone 8 shipped Collection
+02 levels that were exact clones of Collection 01 levels under renamed
+holes, and no prior tooling would have caught it — see
+`docs/COLLECTION-02-DESIGN.md`.
