@@ -6,7 +6,7 @@ import { useFeedback } from "@/feedback/FeedbackProvider";
 import { Icon } from "@/components/Icon";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
 import { Wordmark } from "@/components/Wordmark";
-import { catalog } from "@/content/catalog";
+import { getCollection } from "@/content/catalog";
 import { getChapterProgress, getCollectionProgress } from "@/content/navigation";
 import type { Chapter, Collection } from "@/content/types";
 import type { Level } from "@/game/types";
@@ -153,21 +153,23 @@ function ChapterDivider({ chapter, completed, total }: { chapter: Chapter; compl
   );
 }
 
-export function LevelSelectScreen() {
+export function LevelSelectScreen({ collectionId }: { collectionId: string }) {
   const router = useRouter();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
-  const { data, loading, storageWarning, unlockedCount, resumeId, isUnlocked } = useProgress();
+  const { data, loading, storageWarning, isUnlocked } = useProgress();
   const feedback = useFeedback();
   const { contentWidth } = getGalleryLayout(viewportWidth, fontScale);
 
-  // Every word on this screen comes from content metadata. Adding a chapter or
-  // a collection must never require editing this file.
-  const levels = catalog.levels;
-  const collection: Collection | undefined = catalog.collections[0];
+  // Every word on this screen comes from content metadata. Adding a chapter
+  // must never require editing this file; adding a collection only requires
+  // registering it in src/content/catalog.ts.
+  const collection: Collection | undefined = getCollection(collectionId);
+  const levels = collection ? collection.levels : [];
   const isCompleted = (levelId: string) => Boolean(data.completed[levelId]);
   const collectionProgress = collection
     ? getCollectionProgress(collection, isCompleted)
     : { total: 0, completed: 0, finished: true, nextIncompleteLevelId: null };
+  const resumeId = collectionProgress.nextIncompleteLevelId ?? levels[levels.length - 1]?.id ?? null;
 
   function openLevel(levelId: string) {
     feedback.emit("gallerySelected");
@@ -186,7 +188,16 @@ export function LevelSelectScreen() {
       <ScrollView contentContainerStyle={[styles.scrollContent, { width: contentWidth }]} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.heroRow}>
-            <Wordmark size={24} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to your samplers"
+              accessibilityHint="Returns to the collection library"
+              onPress={() => router.push("/")}
+              style={({ pressed }) => [styles.settingsButton, pressed && styles.settingsPressed]}
+            >
+              <Icon name="chapter" size={19} color={colors.inkSoft} accent={palette.brass} strokeWidth={1.9} />
+            </Pressable>
+            <Wordmark size={22} markOnly />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Open settings"
@@ -284,7 +295,11 @@ export function LevelSelectScreen() {
               })}
             </View>
             <Text style={styles.unlockNote}>
-              {unlockedCount === levels.length ? "Every hoop is unlocked." : `Finish level ${unlockedCount} to unfold the next hoop.`}
+              {collectionProgress.finished
+                ? "Every hoop in this sampler is stitched."
+                : levels.every((level) => isUnlocked(level.id))
+                  ? "Every hoop is unlocked."
+                  : "Finish the current hoop to unfold the next."}
             </Text>
           </>
         )}

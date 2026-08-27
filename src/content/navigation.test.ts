@@ -9,6 +9,7 @@ import {
   getChapterProgress,
   getCollectionForLevel,
   getCollectionProgress,
+  getCollectionUnlockState,
   getFirstLevelIdOfChapter,
   getLastLevelIdOfChapter,
   getLevelContext,
@@ -131,6 +132,20 @@ test("resume on the final level of the catalog stays there rather than falling o
   }
   assert.equal(resumeLevelId(progress, levels), "knots-end-20");
   assert.equal(getNextLevelId("knots-end-20"), null);
+});
+
+test("the first collection is always unlocked; a later one is locked until the one before it finishes", () => {
+  const [dayAndNight, knotAndBramble] = catalog.collections;
+  assert.equal(getCollectionUnlockState(dayAndNight, () => false).unlocked, true);
+
+  const noneCompleted = getCollectionUnlockState(knotAndBramble, () => false);
+  assert.equal(noneCompleted.unlocked, false);
+  assert.match(noneCompleted.reason ?? "", /Day & Night/);
+
+  const isDayAndNightComplete = (levelId: string) => dayAndNight.levelIds.includes(levelId);
+  const allComplete = getCollectionUnlockState(knotAndBramble, isDayAndNightComplete);
+  assert.equal(allComplete.unlocked, true);
+  assert.equal(allComplete.reason, null);
 });
 
 test("resume lands on Collection 02's first level once Collection 01 is finished", () => {

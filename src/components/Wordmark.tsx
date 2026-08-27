@@ -2,6 +2,7 @@ import { memo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, G, Line, Path } from "react-native-svg";
 
+import { decorativeSvgA11yProps } from "@/components/decorativeA11y";
 import { colors, thread, type } from "@/theme/tokens";
 
 /**
@@ -13,7 +14,7 @@ import { colors, thread, type } from "@/theme/tokens";
 function StitchMark({ size }: { size: number }) {
   const s = size;
   return (
-    <Svg width={s} height={s} viewBox="0 0 44 44" pointerEvents="none" accessibilityElementsHidden>
+    <Svg width={s} height={s} viewBox="0 0 44 44" pointerEvents="none" {...decorativeSvgA11yProps}>
       {/* Running stitch: solid front dashes crossing into dashed back. */}
       <Path d="M4 30c5-2 7-14 13-14" fill="none" stroke={thread.front.core} strokeWidth={3} strokeLinecap="round" />
       <Path

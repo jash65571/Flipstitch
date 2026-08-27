@@ -32,11 +32,19 @@ type GameScreenProps = {
   collectionTitle: string;
   hasPrevious: boolean;
   hasNext: boolean;
+  /** True when this level is the last in its collection — the completion
+   *  card shows a crafted collection-complete state instead of the plain
+   *  next-level flow. */
+  isCollectionLast: boolean;
+  /** Title of the collection unlocked by finishing this one, or null when
+   *  none is unlocked yet (or this was already the last collection). */
+  nextCollectionTitle: string | null;
   /** Playtest attempt id for the current play-through; events are stamped with it. */
   attemptId: string | null;
   onExit: () => void;
   onPrevious: () => void;
   onNext: () => void;
+  onOpenGallery: () => void;
   /** Restart/replay: the route closes the current attempt and starts a new one. */
   onRestart: () => void;
   onComplete: (moves: number) => void;
@@ -88,10 +96,13 @@ export function GameScreen({
   collectionTitle,
   hasPrevious,
   hasNext,
+  isCollectionLast,
+  nextCollectionTitle,
   attemptId,
   onExit,
   onPrevious,
   onNext,
+  onOpenGallery,
   onRestart,
   onComplete
 }: GameScreenProps) {
@@ -420,7 +431,9 @@ export function GameScreen({
               </View>
             </View>
             <View style={styles.completionCopy}>
-              <Text maxFontSizeMultiplier={1.6} style={styles.completionTitle}>Thread complete</Text>
+              <Text maxFontSizeMultiplier={1.6} style={styles.completionTitle}>
+                {isCollectionLast ? `${collectionTitle} — finished` : "Thread complete"}
+              </Text>
               <Text maxFontSizeMultiplier={1.8} style={styles.completionText}>{level.completionMessage}</Text>
             </View>
           </View>
@@ -428,11 +441,30 @@ export function GameScreen({
             <Pressable accessibilityRole="button" accessibilityLabel="Play level again" onPress={handleRestart} style={({ pressed }) => [styles.secondaryButton, pressed && styles.replayPressed]}>
               <Text maxFontSizeMultiplier={1.5} style={styles.secondaryButtonText}>Again</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Return to level gallery" onPress={onExit} style={({ pressed }) => [styles.secondaryButton, pressed && styles.replayPressed]}>
-              <Text maxFontSizeMultiplier={1.5} style={styles.secondaryButtonText}>Gallery</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={hasNext ? `Play next level ${levelNumber + 1}` : "Return to completed collection"} onPress={hasNext ? onNext : onExit} style={({ pressed }) => [styles.nextButton, pressed && styles.replayPressed]}>
-              <Text maxFontSizeMultiplier={1.5} style={styles.nextButtonText}>{hasNext ? "Next" : "Collection"}</Text>
+            {isCollectionLast ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="View finished samplers" onPress={onOpenGallery} style={({ pressed }) => [styles.secondaryButton, pressed && styles.replayPressed]}>
+                <Text maxFontSizeMultiplier={1.5} style={styles.secondaryButtonText}>Samplers</Text>
+              </Pressable>
+            ) : (
+              <Pressable accessibilityRole="button" accessibilityLabel="Return to level gallery" onPress={onExit} style={({ pressed }) => [styles.secondaryButton, pressed && styles.replayPressed]}>
+                <Text maxFontSizeMultiplier={1.5} style={styles.secondaryButtonText}>Gallery</Text>
+              </Pressable>
+            )}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                hasNext && nextCollectionTitle
+                  ? `Open ${nextCollectionTitle}`
+                  : hasNext
+                    ? `Play next level ${levelNumber + 1}`
+                    : `Return to ${collectionTitle}`
+              }
+              onPress={hasNext ? onNext : onExit}
+              style={({ pressed }) => [styles.nextButton, pressed && styles.replayPressed]}
+            >
+              <Text maxFontSizeMultiplier={1.5} style={styles.nextButtonText}>
+                {hasNext ? (nextCollectionTitle ?? "Next") : "Collection"}
+              </Text>
             </Pressable>
           </View>
         </Animated.View>

@@ -1,5 +1,5 @@
-import { LevelSelectScreen } from "@/screens/LevelSelectScreen";
+import { CollectionLibraryScreen } from "@/screens/CollectionLibraryScreen";
 
 export default function HomeScreen() {
-  return <LevelSelectScreen />;
+  return <CollectionLibraryScreen />;
 }

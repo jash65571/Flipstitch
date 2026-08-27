@@ -1,6 +1,7 @@
 import { memo } from "react";
 import Svg, { Circle, Line } from "react-native-svg";
 
+import { decorativeSvgA11yProps } from "@/components/decorativeA11y";
 import { targetEdges } from "@/game/solver";
 import type { Level } from "@/game/types";
 import { colors } from "@/theme/tokens";
@@ -14,7 +15,7 @@ function LevelThumbnailView({ level, size = 92, locked = false }: { level: Level
   ]));
 
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} pointerEvents="none" accessibilityElementsHidden>
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} pointerEvents="none" {...decorativeSvgA11yProps}>
       <Circle cx={size / 2} cy={size / 2 + 2} r={size * 0.47} fill={colors.woodDark} opacity={0.18} />
       <Circle cx={size / 2} cy={size / 2} r={size * 0.46} fill={colors.wood} />
       <Circle cx={size / 2} cy={size / 2} r={size * 0.385} fill={colors.cloth} />

@@ -17,6 +17,7 @@ import Svg, {
 import { availableNodes, edgeKey } from "@/game/engine";
 import { targetEdges } from "@/game/solver";
 import type { GameState, GuidanceLevel, Level, Side, StitchHole } from "@/game/types";
+import { decorativeSvgA11yProps } from "@/components/decorativeA11y";
 import { colors, radius, thread, type } from "@/theme/tokens";
 
 type HoopBoardProps = {
@@ -87,7 +88,7 @@ function HoopBoardView({
         }
       ]}
     >
-      <Svg width={size} height={size} pointerEvents="none" accessibilityElementsHidden>
+      <Svg width={size} height={size} pointerEvents="none" {...decorativeSvgA11yProps}>
         <Defs>
           <Pattern id="weave" width="8" height="8" patternUnits="userSpaceOnUse">
             <Rect width="8" height="8" fill={colors.cloth} />

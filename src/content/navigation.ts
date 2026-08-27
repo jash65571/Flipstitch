@@ -128,3 +128,26 @@ export function getCollectionProgress(collection: Collection, isCompleted: Compl
 export function getCatalogProgress(isCompleted: CompletionLookup): ContentProgress {
   return progressOver(catalog.levelIds, isCompleted);
 }
+
+export type CollectionUnlockState = {
+  unlocked: boolean;
+  /** Player-facing reason the collection is folded, or null when unlocked. */
+  reason: string | null;
+};
+
+/**
+ * A collection unlocks once the collection before it (by `order`) is fully
+ * finished. The first collection is always unlocked. This mirrors the linear
+ * per-level unlock in `src/progress/model.ts` — that model already gates
+ * Collection 02's first level behind Collection 01's last, purely from flat
+ * catalog order, so this helper only adds the player-facing *reason* a
+ * screen can show for a folded collection.
+ */
+export function getCollectionUnlockState(collection: Collection, isCompleted: CompletionLookup): CollectionUnlockState {
+  const index = catalog.collections.findIndex((candidate) => candidate.id === collection.id);
+  if (index <= 0) return { unlocked: true, reason: null };
+  const previous = catalog.collections[index - 1];
+  const previousProgress = getCollectionProgress(previous, isCompleted);
+  if (previousProgress.finished) return { unlocked: true, reason: null };
+  return { unlocked: false, reason: `Finish ${previous.title} to unfold this sampler.` };
+}

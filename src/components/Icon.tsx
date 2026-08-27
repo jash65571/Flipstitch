@@ -1,6 +1,7 @@
 import { memo } from "react";
 import Svg, { Circle, G, Line, Path, Rect } from "react-native-svg";
 
+import { decorativeSvgA11yProps } from "@/components/decorativeA11y";
 import { colors } from "@/theme/tokens";
 
 /**
@@ -43,7 +44,7 @@ function IconView({ name, size = 24, color = colors.ink, accent, strokeWidth = 2
   };
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" pointerEvents="none" accessibilityElementsHidden>
+    <Svg width={size} height={size} viewBox="0 0 24 24" pointerEvents="none" {...decorativeSvgA11yProps}>
       {name === "needle" ? (
         <G>
           {/* Brass needle on a thread tail. */}

@@ -85,10 +85,15 @@ export default function LevelRoute() {
   }
   const currentLevel = level;
   const currentContext = context;
+  const nextContext = currentContext.nextLevelId ? getLevelContext(currentContext.nextLevelId) : undefined;
+  const nextCollectionTitle =
+    currentContext.isCollectionLast && nextContext && nextContext.collection.id !== currentContext.collection.id
+      ? nextContext.collection.title
+      : null;
 
   function openLevelById(nextId: string | null, isForwardStep: boolean) {
     if (!nextId) {
-      router.replace("/");
+      router.replace({ pathname: "/collection/[id]", params: { id: currentContext.collection.id } });
       return;
     }
     startLevel(nextId);
@@ -131,10 +136,13 @@ export default function LevelRoute() {
       collectionTitle={context.collection.title}
       hasPrevious={context.previousLevelId !== null}
       hasNext={context.nextLevelId !== null}
+      isCollectionLast={currentContext.isCollectionLast}
+      nextCollectionTitle={nextCollectionTitle}
       attemptId={attemptId}
-      onExit={() => router.replace("/")}
+      onExit={() => router.replace({ pathname: "/collection/[id]", params: { id: currentContext.collection.id } })}
       onPrevious={() => openLevelById(currentContext.previousLevelId, false)}
       onNext={() => openLevelById(currentContext.nextLevelId, true)}
+      onOpenGallery={() => router.push("/gallery")}
       onRestart={handleRestart}
       onComplete={handleComplete}
     />

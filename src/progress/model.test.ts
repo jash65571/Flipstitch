@@ -125,6 +125,53 @@ test("a save naming a level that no longer exists drops only that entry", () => 
   assert.equal(loaded.lastPlayedLevelId, null, "an unknown last-played level must not resume into nothing");
 });
 
+// ---- Prompt 8: Collection 02 appended after Collection 01 -----------------
+//
+// Collection 02 (Knot & Bramble) was appended after Day & Night in flat
+// catalog order (levels 11-20). Nothing about the progress schema changed —
+// unlocking and resume are still pure functions of "how many levels are
+// contiguously completed from the start", so an existing save with any
+// partial or full Day & Night progress must upgrade correctly with no
+// migration code at all. These tests prove the three boundary cases the
+// milestone calls out explicitly: 5 completed, 9 completed, all 10 completed.
+
+test("a save with exactly five Day & Night levels completed resumes at level six and Collection 02 stays locked", () => {
+  const raw = JSON.stringify({
+    version: 1,
+    completed: Object.fromEntries(levels.slice(0, 5).map((level, index) => [level.id, { bestMoves: index + 4 }])),
+    lastPlayedLevelId: "forked-needle-05"
+  });
+  const loaded = readProgress(raw, levels);
+  assert.equal(unlockedLevelCount(loaded, levels), 6);
+  assert.equal(resumeLevelId(loaded, levels), "echo-stairs-06");
+  assert.equal(isLevelUnlocked(loaded, levels, "root-knot-11"), false, "Collection 02 must stay locked");
+});
+
+test("a save with nine of ten Day & Night levels completed resumes at level ten", () => {
+  const raw = JSON.stringify({
+    version: 1,
+    completed: Object.fromEntries(levels.slice(0, 9).map((level, index) => [level.id, { bestMoves: index + 4 }])),
+    lastPlayedLevelId: "moonlit-return-09"
+  });
+  const loaded = readProgress(raw, levels);
+  assert.equal(unlockedLevelCount(loaded, levels), 10);
+  assert.equal(resumeLevelId(loaded, levels), "master-sampler-10");
+  assert.equal(isLevelUnlocked(loaded, levels, "master-sampler-10"), true);
+  assert.equal(isLevelUnlocked(loaded, levels, "root-knot-11"), false, "the tenth level is unlocked, not the eleventh");
+});
+
+test("a save with all ten Day & Night levels completed unlocks and resumes into Collection 02", () => {
+  const raw = JSON.stringify({
+    version: 1,
+    completed: Object.fromEntries(levels.slice(0, 10).map((level, index) => [level.id, { bestMoves: index + 4 }])),
+    lastPlayedLevelId: "master-sampler-10"
+  });
+  const loaded = readProgress(raw, levels);
+  assert.equal(unlockedLevelCount(loaded, levels), 11);
+  assert.equal(isLevelUnlocked(loaded, levels, "root-knot-11"), true);
+  assert.equal(resumeLevelId(loaded, levels), "root-knot-11", "finishing Collection 01 should resume straight into Collection 02");
+});
+
 test("corrupt records inside an otherwise valid save are discarded, not trusted", () => {
   const raw = JSON.stringify({
     version: 1,
