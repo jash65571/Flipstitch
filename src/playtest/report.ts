@@ -38,7 +38,7 @@ export type PlaytestReport = {
   invalidMoveRate: { overall: number | null; byLevel: Record<string, number | null> };
   undoUsage: { total: number; perSession: number | null };
   hintUsage: { total: number; perSession: number | null };
-  previewUsage: { total: number; perSession: number | null };
+  peekUsage: { total: number; perSession: number | null };
   restartUsage: { total: number; perSession: number | null };
   exitBeforeCompletionRate: { overall: number | null; byLevel: Record<string, number | null> };
   legacyLevels: string[];
@@ -157,7 +157,7 @@ function buildAttempts(events: readonly PlaytestEvent[]): {
         break;
       }
       default:
-        // invalid_stitch / undo_used / hint_used / preview_used associate with
+        // invalid_stitch / undo_used / hint_used / peek_used associate with
         // the active attempt; they are counted directly from events elsewhere.
         attemptFor(event);
     }
@@ -191,7 +191,7 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
       invalidMoveRate: { overall: null, byLevel: {} },
       undoUsage: { total: 0, perSession: null },
       hintUsage: { total: 0, perSession: null },
-      previewUsage: { total: 0, perSession: null },
+      peekUsage: { total: 0, perSession: null },
       restartUsage: { total: 0, perSession: null },
       exitBeforeCompletionRate: { overall: null, byLevel: {} },
       legacyLevels: [],
@@ -207,7 +207,7 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
   const invalidCounts = new Map<string, number>();
   const undoCounts = new Map<string, number>();
   const hintCounts = new Map<string, number>();
-  const previewCounts = new Map<string, number>();
+  const peekCounts = new Map<string, number>();
   const restartCounts = new Map<string, number>();
 
   let sessionsReachingLevelFour = 0;
@@ -231,8 +231,8 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
         case "hint_used":
           hintCounts.set(event.levelId, (hintCounts.get(event.levelId) ?? 0) + 1);
           break;
-        case "preview_used":
-          previewCounts.set(event.levelId, (previewCounts.get(event.levelId) ?? 0) + 1);
+        case "peek_used":
+          peekCounts.set(event.levelId, (peekCounts.get(event.levelId) ?? 0) + 1);
           break;
         case "restart_used":
           restartCounts.set(event.levelId, (restartCounts.get(event.levelId) ?? 0) + 1);
@@ -299,7 +299,7 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
 
   const totalUndos = [...undoCounts.values()].reduce((a, b) => a + b, 0);
   const totalHints = [...hintCounts.values()].reduce((a, b) => a + b, 0);
-  const totalPreviews = [...previewCounts.values()].reduce((a, b) => a + b, 0);
+  const totalPeeks = [...peekCounts.values()].reduce((a, b) => a + b, 0);
   const totalRestarts = [...restartCounts.values()].reduce((a, b) => a + b, 0);
 
   return {
@@ -321,7 +321,7 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
     },
     undoUsage: { total: totalUndos, perSession: ratio(totalUndos, totalSessions) },
     hintUsage: { total: totalHints, perSession: ratio(totalHints, totalSessions) },
-    previewUsage: { total: totalPreviews, perSession: ratio(totalPreviews, totalSessions) },
+    peekUsage: { total: totalPeeks, perSession: ratio(totalPeeks, totalSessions) },
     restartUsage: { total: totalRestarts, perSession: ratio(totalRestarts, totalSessions) },
     exitBeforeCompletionRate: {
       overall: ratio(totalExited, totalAttempts),
@@ -437,7 +437,7 @@ export function formatReadableReport(report: PlaytestReport, levelIds: readonly 
   lines.push("— Tool usage (totals / per session) —");
   lines.push(`  Undo: ${report.undoUsage.total} / ${report.undoUsage.perSession?.toFixed(2) ?? "n/a"}`);
   lines.push(`  Hint: ${report.hintUsage.total} / ${report.hintUsage.perSession?.toFixed(2) ?? "n/a"}`);
-  lines.push(`  Preview: ${report.previewUsage.total} / ${report.previewUsage.perSession?.toFixed(2) ?? "n/a"}`);
+  lines.push(`  Peek: ${report.peekUsage.total} / ${report.peekUsage.perSession?.toFixed(2) ?? "n/a"}`);
   lines.push(`  Restart: ${report.restartUsage.total} / ${report.restartUsage.perSession?.toFixed(2) ?? "n/a"}`);
 
   if (content) {

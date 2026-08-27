@@ -151,6 +151,16 @@ console.log(
 );
 
 console.log("\nTopology duplicate report");
+console.log(
+  topology.inexact.length === 0
+    ? "  Topology analysis: EXHAUSTIVE — every same-size pair was canonicalized to completion."
+    : `  Topology analysis: INEXACT — ${topology.inexact.length} pair(s) could not be certified (leaf budget exhausted). This fails the build; see docs/MILESTONE-8-2-QA.md.`
+);
+if (topology.inexact.length > 0) {
+  for (const finding of topology.inexact) {
+    console.log(`  INEXACT_TOPOLOGY_COMPARISON  ${finding.aId} <-> ${finding.bId}`);
+  }
+}
 if (topology.unapproved.length === 0) {
   console.log("  No unapproved EXACT or MIRRORED topology duplicates.");
 } else {
@@ -159,14 +169,15 @@ if (topology.unapproved.length === 0) {
   }
 }
 if (topology.near.length > 0) {
-  console.log("  Advisory NEAR duplicates (not a build failure, human review only):");
+  console.log("  Advisory NEAR duplicates (heuristic, not a build failure, human review only):");
   for (const finding of topology.near) {
     console.log(`    near  ${finding.aId} <-> ${finding.bId}`);
   }
 }
 console.log(
   `\n  ${topology.exact.length} exact, ${topology.mirrored.length} mirrored, ${topology.near.length} near, ` +
-    `${topology.unapproved.length} unapproved. Unapproved exact/mirrored duplicates fail the build.`
+    `${topology.inexact.length} inexact, ${topology.unapproved.length} unapproved. ` +
+    "Unapproved exact/mirrored duplicates and any inexact comparison fail the build."
 );
 
 process.exit(pacing.ok && topology.ok ? 0 : 1);

@@ -189,3 +189,44 @@ a shared-hub shape, not a bug. Chapter 2's converging-openings and
 interacting-runners levels balance the collection's overall side split back
 out. See `docs/MILESTONE-8-QA.md` and the reviewed-warning entry in
 `src/content/pacing.test.ts`.
+
+**Milestone 8.2 re-judgment (real play):** played Bark Hollow, Deep
+Taproot, and Old Growth through the actual UI rather than judging the
+warning from the metric alone. In play the chapter does not feel like the
+front side is "just transportation" — the front-side stitches are short
+(one hop into the hub) but every one of them is where the *decision to open
+a specific door* is made and where a trap becomes irreversible once you
+step through; you are reading the front pattern to choose, then confirming
+on the back. It reads as "the hub teaches you to plan one step ahead of
+your current side," which is the intended nested-obligation lesson, not as
+one side being idle. Verdict: kept as an intentional, reviewed warning,
+now with actual play as the evidence rather than only the shared-hub
+construction argument above.
+
+## Milestone 8.2 near-duplicate re-judgment (real play)
+
+Played all four levels in both flagged `near` pairs end-to-end:
+
+- **Deep Taproot ↔ Thicket Path.** Both are a hub with one two-hole dive and
+  one runner, which is exactly why the detector's degree-signature heuristic
+  flags them. In play they read differently: Deep Taproot's dive (`h-p-q`)
+  sits opposite a short runner (`h-r-t`) in a compact, near-symmetric radial
+  layout, and the puzzle's tension is almost entirely about not taking the
+  runner early. Thicket Path's dive is a two-hop diagonal lane visually
+  separated from the hub's two return-wings, and because `allowDeadEnds` and
+  the hint copy both describe a "thicket lane" distinct from Deep Taproot's
+  "root," the completed patterns look different (a T-plus-diagonal vs. a
+  wide two-wing V with a trailing tail — see the two "Thread complete"
+  screenshots). Verdict: distinct puzzles: keep as advisory.
+- **Orbit Bloom ↔ Snared Vine.** Snared Vine's own hint text says it "reuses
+  the same twin shape as the thorns" (Twin Thorns), which is a bigger
+  in-collection resemblance than its flagged pairing with Collection 01's
+  Orbit Bloom. Played Snared Vine in this milestone; Orbit Bloom was not
+  replayed live (Collection 01, out of this milestone's repaired-level
+  scope), but Snared Vine's completed pattern is an asymmetric scatter — a
+  short return loop, a two-hole side loop, and a three-hole runner across a
+  deliberately uneven hole layout — which reads as its own puzzle rather
+  than a recognizable reskin. Verdict: kept advisory; flagged for a closer
+  look (a real Orbit Bloom replay) if this pair is ever revisited.
+
+No redesign was warranted for either pair.

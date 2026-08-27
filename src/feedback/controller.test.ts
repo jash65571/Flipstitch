@@ -65,7 +65,7 @@ test("side change right after a stitch deduplicates the haptic but keeps its sou
   assert.ok(played.some((p) => p.name === "hoop-flip"), "the flip sound still plays");
 });
 
-test("an independent side change (preview toggle) still fires its haptic", () => {
+test("two independent side changes each still fire their own haptic (real stitches, not Peek — Peek's sideChanged-free peekToggled event is covered separately)", () => {
   const { haptics, audio, haptic } = makeFakes();
   const controller = makeController(audio, haptic, { soundEnabled: true, hapticsEnabled: true });
   controller.emit("sideChanged", 1_000);

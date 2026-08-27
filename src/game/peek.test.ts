@@ -83,6 +83,14 @@ test("needle anchor note always names the true active side, never the peeked sid
   assert.equal(needleAnchorNote("front"), "Needle stays on Front");
 });
 
+test("rapid repeated open/close toggling always alternates cleanly and never gets stuck peeking", () => {
+  let peekSide: ReturnType<typeof togglePeek> = null;
+  for (let i = 0; i < 20; i += 1) {
+    peekSide = togglePeek("front", peekSide);
+    assert.equal(peekSide, i % 2 === 0 ? "back" : null);
+  }
+});
+
 test("accessibility announcements name both the peeked side and the real needle side, and mark read-only", () => {
   const enter = peekEnterAnnouncement("front", "back");
   assert.ok(enter.includes("Front"));

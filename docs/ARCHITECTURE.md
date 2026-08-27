@@ -189,6 +189,30 @@ needed no changes at all: `src/progress/model.ts` was already a pure
 function of flat catalog order, so a second collection appended after the
 first unlocks and resumes correctly with zero migration code.
 
+## Web deployment requirement (documented Prompt 8.2, not yet deployed)
+
+FlipStitch is not hosted anywhere yet — this is a requirement note for
+whenever that happens, not a hosting choice. `expo-router`'s routes above
+are client-side dynamic routes (`/collection/[id]`, `/level/[id]`). On the
+web export (`npm run export:web`, `dist/web`) these only work correctly
+under a host that:
+
+- serves `dist/web/index.html` (the SPA shell) for **any** path that isn't a
+  real static asset — a host that 404s on a hard refresh of
+  `/collection/knot-and-bramble` or `/level/bark-hollow-13` breaks that
+  route entirely. This is the standard "SPA fallback" / "rewrite all routes
+  to index.html" hosting rule.
+- preserves that behavior for a **shared deep link** opened cold (no prior
+  client-side navigation) — the same hard-refresh case, just arrived at
+  externally instead of via browser reload.
+- does not require server-side rendering; a static SPA fallback is
+  sufficient, since all routing here is client-resolved against the bundled
+  catalog (`src/content/catalog.ts`), not server data.
+
+No hosting provider is chosen yet. Whichever one is picked (Prompt 9+),
+confirm its static-hosting config supports SPA fallback/rewrites before
+relying on shareable collection/level links.
+
 ## Peek state model (added Milestone 8.1)
 
 `src/game/peek.ts` holds the entire inspection state machine as pure

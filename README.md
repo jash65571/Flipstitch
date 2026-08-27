@@ -53,7 +53,7 @@ The game itself is unchanged:
 
 - Tap a valid hole to place one stitch.
 - The active side changes after every stitch.
-- Preview the reverse without moving the needle.
+- Peek at the reverse without moving the needle.
 - Undo freely or ask a staged hint (concept → region → exact).
 - Finish every marked stitch on both sides.
 - Choose from ten validated handcrafted hoops across two chapters.

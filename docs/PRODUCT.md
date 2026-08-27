@@ -17,7 +17,7 @@ We start with one polished level, not a large menu. It must prove five things:
 1. Players always know which side is active.
 2. The flip feels rewarding without slowing play.
 3. A wrong choice is understood without a tutorial wall.
-4. Undo and preview remove fear from experimentation.
+4. Undo and Peek remove fear from experimentation.
 5. Completing both sides creates a strong reveal.
 
 ## Visual direction
@@ -30,7 +30,7 @@ The **Living Sampler** is the visual source of truth (see `docs/DESIGN-BIBLE.md`
 - Large touch targets around small visual holes; restrained brass/ochre and sage accents.
 - Both font families are bundled for offline use under the SIL Open Font License.
 
-The puzzle takes most of the screen. The only play controls are Undo, Preview, and Hint. Reduced motion replaces the flip with an instant side swap.
+The puzzle takes most of the screen. The only play controls are Undo, Peek, and Hint. Reduced motion replaces the flip with an instant side swap.
 
 ## Growth path
 
@@ -95,7 +95,7 @@ The puzzle takes most of the screen. The only play controls are Undo, Preview, a
 - Authoring tools scale: solution counting is memoised over states and is exact
   or explicitly capped, never silently partial.
 
-### Phase 2: content proof (next)
+### Phase 2: content proof (content built and repaired; behavioral proof not yet measured)
 
 - Grow the catalog **by chapter**, not to a fixed level count. The old
   "20-level Day & Night collection" target is retired: it was a prototype
@@ -103,9 +103,22 @@ The puzzle takes most of the screen. The only play controls are Undo, Preview, a
   arc rather than a quota. A chapter ships when its concepts are taught,
   practised, twisted, and closed by a capstone — typically five to eight hoops.
 - Collection 02 opens a new learning arc (`resetsDifficulty: true`) drawing on
-  the Tier 2 concepts in `docs/PUZZLE-CURRICULUM.md`.
-- Completion gallery showing both sides.
+  the Tier 2 concepts in `docs/PUZZLE-CURRICULUM.md`. **Built (Prompt 8) and
+  repaired (Prompt 8.1: seven levels that were exact/near-exact topology
+  clones were redesigned; Prompt 8.2: those repairs were played through the
+  real UI and their geometry/hints/traps visually verified — see
+  `docs/MILESTONE-8-2-QA.md`).**
+- Completion gallery showing both sides. **Built (Prompt 7/8).**
 - No daily puzzle yet; retention systems wait for content proof.
+- **What "content proof" still means and is not yet true:** the two
+  collections existing, passing automated validation, and playing correctly
+  in manual/browser testing is necessary but not sufficient. The actual
+  Phase 2 gate (see Measures, below) is behavioral: real testers completing
+  Level 1 unaided, reaching Level 4, not exiting early. That data does not
+  exist yet — `docs/MILESTONE-8-2-QA.md` records this explicitly as **"not
+  measured yet"** rather than assuming content quality implies it. Phase 2
+  does not close, and Phase 3 does not start, until a real tester sample
+  exists and the Measures gates below are evaluated against it.
 
 ### Phase 3: retention proof
 

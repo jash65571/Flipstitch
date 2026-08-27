@@ -91,15 +91,30 @@ function cellsOf(colors: number[]): Map<number, number[]> {
   return cells;
 }
 
-const MAX_LEAVES = 20_000;
+const DEFAULT_MAX_LEAVES = 20_000;
+
+/**
+ * Result of a canonicalization attempt. `exhaustedBudget: true` means the
+ * search was cut off before exploring every individualization branch — in
+ * that case `key` is only the best string found among the branches that
+ * *were* explored, not a true canonical form, and must never be compared
+ * for EXACT/MIRRORED equality. See `classifyPair`.
+ */
+export type CanonicalResult = {
+  key: string;
+  exploredLeaves: number;
+  exhaustedBudget: boolean;
+};
 
 /** Explore every individualization branch (bounded) and keep the
  *  lexicographically smallest resulting canonical string. Exhaustive for the
- *  small, sparse graphs FlipStitch levels use. */
-function canonicalKeyFromGraph(graph: Graph): string {
+ *  small, sparse graphs FlipStitch levels use, unless the branch count
+ *  exceeds `maxLeaves` — see `CanonicalResult.exhaustedBudget`. */
+function canonicalKeyFromGraph(graph: Graph, maxLeaves: number = DEFAULT_MAX_LEAVES): CanonicalResult {
   const initial = Array.from({ length: graph.n }, (_, i) => (i === graph.startIndex ? 1 : 0));
   let best: string | null = null;
   let leaves = 0;
+  let cutOff = false;
 
   function encode(colors: number[]): string {
     const label = colors; // color IS the canonical index, since it's a discrete 0..n-1 assignment
@@ -117,7 +132,10 @@ function canonicalKeyFromGraph(graph: Graph): string {
   }
 
   function recurse(colors: number[]) {
-    if (leaves >= MAX_LEAVES) return;
+    if (leaves >= maxLeaves) {
+      cutOff = true;
+      return;
+    }
     const refined = refine(graph, colors);
     const distinctCount = new Set(refined).size;
 
@@ -145,7 +163,10 @@ function canonicalKeyFromGraph(graph: Graph): string {
     }
 
     for (const node of targetCell) {
-      if (leaves >= MAX_LEAVES) return;
+      if (leaves >= maxLeaves) {
+        cutOff = true;
+        return;
+      }
       // Individualize: give `node` a color strictly between its cell's rank
       // and the next-lower rank, forcing it into its own singleton cell on
       // the next refinement pass without disturbing relative order.
@@ -156,7 +177,8 @@ function canonicalKeyFromGraph(graph: Graph): string {
   }
 
   recurse(initial);
-  return best ?? encode(refine(graph, initial));
+  const key = best ?? encode(refine(graph, initial));
+  return { key, exploredLeaves: leaves, exhaustedBudget: cutOff };
 }
 
 function rerank(colors: number[]): number[] {
@@ -166,19 +188,24 @@ function rerank(colors: number[]): number[] {
 }
 
 /** Canonical topology key: identical iff a hole relabeling maps one level's
- *  front/back edges and start hole/side exactly onto the other's. */
-export function canonicalKey(level: Level): string {
-  return canonicalKeyFromGraph(buildGraph(level, level.frontEdges, level.backEdges));
+ *  front/back edges and start hole/side exactly onto the other's.
+ *  `exhaustedBudget: true` means the search was cut off before completing —
+ *  the key is then only a partial best-effort string and must never be used
+ *  to assert EXACT/MIRRORED equality (see `classifyPair`). `maxLeaves` is
+ *  exposed only for tests exercising budget-exhaustion behavior. */
+export function canonicalKey(level: Level, maxLeaves?: number): CanonicalResult {
+  return canonicalKeyFromGraph(buildGraph(level, level.frontEdges, level.backEdges), maxLeaves);
 }
 
 /** Canonical key of the level as if its front and back were swapped (the
- *  cloth turned over) — used only to detect MIRRORED duplicates. */
-export function mirroredCanonicalKey(level: Level): string {
+ *  cloth turned over) — used only to detect MIRRORED duplicates. Same
+ *  budget-exhaustion contract as `canonicalKey`. */
+export function mirroredCanonicalKey(level: Level, maxLeaves?: number): CanonicalResult {
   const mirrored: Level = {
     ...level,
     startSide: level.startSide === "front" ? "back" : "front"
   };
-  return canonicalKeyFromGraph(buildGraph(mirrored, level.backEdges, level.frontEdges));
+  return canonicalKeyFromGraph(buildGraph(mirrored, level.backEdges, level.frontEdges), maxLeaves);
 }
 
 function degreeSignature(level: Level): string {
@@ -202,22 +229,34 @@ function totalEdgeCount(level: Level): number {
   return level.frontEdges.length + level.backEdges.length;
 }
 
-export type DuplicateKind = "exact" | "mirrored" | "near" | "distinct";
+export type DuplicateKind = "exact" | "mirrored" | "near" | "distinct" | "inexact";
 
 /**
  * Classify a pair of levels.
  *
  * `exact` and `mirrored` are mathematically certain (full isomorphism
- * search, not a coincidence of numeric scores). `near` is an advisory
- * heuristic — same hole count, same total edge count, near-identical degree
- * signature — flagged for human review, never asserted as certain.
+ * search, not a coincidence of numeric scores) — they are only ever
+ * returned when every canonicalization involved completed exhaustively.
+ * `inexact` means the canonicalization search hit its leaf budget before
+ * finishing for this pair: whether the pair is truly exact, mirrored, or
+ * distinct could not be determined, and this classifier refuses to guess.
+ * `near` is an advisory heuristic — same hole count, same total edge count,
+ * near-identical degree signature — flagged for human review, never
+ * asserted as certain.
  */
-export function classifyPair(a: Level, b: Level): DuplicateKind {
+export function classifyPair(a: Level, b: Level, maxLeaves?: number): DuplicateKind {
   if (a.holes.length !== b.holes.length) return degreeHeuristicOrDistinct(a, b);
 
-  const keyA = canonicalKey(a);
-  if (keyA === canonicalKey(b)) return "exact";
-  if (keyA === mirroredCanonicalKey(b)) return "mirrored";
+  const canonA = canonicalKey(a, maxLeaves);
+  const canonB = canonicalKey(b, maxLeaves);
+  const mirrorB = mirroredCanonicalKey(b, maxLeaves);
+
+  if (canonA.exhaustedBudget || canonB.exhaustedBudget || mirrorB.exhaustedBudget) {
+    return "inexact";
+  }
+
+  if (canonA.key === canonB.key) return "exact";
+  if (canonA.key === mirrorB.key) return "mirrored";
 
   return degreeHeuristicOrDistinct(a, b);
 }
@@ -234,12 +273,14 @@ export type DuplicateFinding = {
   kind: Exclude<DuplicateKind, "distinct">;
 };
 
-/** All EXACT/MIRRORED/NEAR pairs across a level list, aId < bId by input order. */
-export function findDuplicates(levels: readonly Level[]): DuplicateFinding[] {
+/** All EXACT/MIRRORED/NEAR/INEXACT pairs across a level list, aId < bId by
+ *  input order. `maxLeaves` is exposed only so tests can force budget
+ *  exhaustion; production callers should omit it and use the default. */
+export function findDuplicates(levels: readonly Level[], maxLeaves?: number): DuplicateFinding[] {
   const findings: DuplicateFinding[] = [];
   for (let i = 0; i < levels.length; i += 1) {
     for (let j = i + 1; j < levels.length; j += 1) {
-      const kind = classifyPair(levels[i], levels[j]);
+      const kind = classifyPair(levels[i], levels[j], maxLeaves);
       if (kind !== "distinct") {
         findings.push({ aId: levels[i].id, bId: levels[j].id, kind });
       }

@@ -19,7 +19,7 @@ export type PlaytestEventName =
   | "first_valid_stitch"
   | "valid_stitch"
   | "invalid_stitch"
-  | "preview_used"
+  | "peek_used"
   | "undo_used"
   | "hint_used"
   | "thread_trapped"
@@ -35,7 +35,7 @@ export const PLAYTEST_EVENT_NAMES: readonly PlaytestEventName[] = [
   "first_valid_stitch",
   "valid_stitch",
   "invalid_stitch",
-  "preview_used",
+  "peek_used",
   "undo_used",
   "hint_used",
   "thread_trapped",

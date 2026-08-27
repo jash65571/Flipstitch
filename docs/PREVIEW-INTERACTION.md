@@ -1,5 +1,14 @@
 # Preview → Peek — Interaction Design (Milestone 8.1)
 
+> **Milestone 8.2 addendum:** everything below describes the Milestone 8.1
+> design and fix. Milestone 8.2's job was to verify it against the running
+> app rather than trust the design doc — live screenshots of the corrected
+> label stacking, both Peek directions, reduced-motion, and large-text; a
+> single-tester five-second clarity pass; and a judgment on whether Peek
+> needs a needle-anchor marker on its dimmed play layer. See
+> `docs/MILESTONE-8-2-QA.md` → "Browser proof" and "Human usability proof"
+> for the results and the needle-anchor decision.
+
 ## What was wrong
 
 Milestone 8's Preview blended two different facts into one variable:
@@ -66,6 +75,14 @@ side-swappable one:
   as muted outline holes and dashed lines, with **no needle** and **no
   legal-move glow**, tagged with a `PEEKING · <side>` tab and an anchored
   `Needle stays on <activeSide>` note.
+- **`SideStatusLabel`** (the `PLAYING · <side>` pill) is its own component,
+  rendered as a full-opacity sibling of the Peek layer, not as a descendant
+  of the dimmed `PlayLayer`. Milestone 8.2 QA found the pill visually
+  clipped by the Peek panel in live screenshots when it lived inside
+  `PlayLayer`'s `opacity: 0.4` subtree — opacity below 1 creates its own
+  CSS/RN stacking context, so no `zIndex` on the pill could paint it above
+  the Peek layer. Extracting it as a sibling was the actual fix (see
+  `docs/MILESTONE-8-2-QA.md`).
 
 A real stitch still uses `animateSwap` (the flip-scale transform,
 `hoop-flip` sound, `soft` haptic). Peek uses none of these — entering or

@@ -307,14 +307,28 @@ function PlayLayer({
         );
       })}
 
-      <View
-        accessible
-        accessibilityLabel={playingStatus(side)}
-        style={[styles.sideLabel, { backgroundColor: threadDeep }]}
-      >
-        <View style={[styles.sideLabelDot, { backgroundColor: threadColor }]} />
-        <Text style={styles.sideLabelText}>{side === "front" ? "PLAYING · FRONT" : "PLAYING · BACK"}</Text>
-      </View>
+    </View>
+  );
+}
+
+/** The ground-truth "PLAYING · <side>" pill, rendered outside PlayLayer's
+ *  dimmed/opacity subtree. CSS/React Native opacity < 1 creates its own
+ *  stacking context, so a z-index set from inside a dimmed PlayLayer can
+ *  never actually paint above the Peek panel — Milestone 8.2 QA found this
+ *  pill visually clipped by the Peek panel's circular boundary in live
+ *  screenshots despite an earlier attempt to fix it with z-index alone.
+ *  Living here, as a sibling of PeekLayer at full opacity, is what actually
+ *  keeps it legible while peeking. */
+function SideStatusLabel({ side }: { side: Side }) {
+  const sideThread = side === "front" ? thread.front : thread.back;
+  return (
+    <View
+      accessible
+      accessibilityLabel={playingStatus(side)}
+      style={[styles.sideLabel, { backgroundColor: sideThread.deep }]}
+    >
+      <View style={[styles.sideLabelDot, { backgroundColor: sideThread.core }]} />
+      <Text style={styles.sideLabelText}>{side === "front" ? "PLAYING · FRONT" : "PLAYING · BACK"}</Text>
     </View>
   );
 }
@@ -423,6 +437,7 @@ function HoopBoardView({
           <PeekLayer level={level} peekSide={peekSide} activeSide={game.activeSide} size={size} />
         </View>
       ) : null}
+      <SideStatusLabel side={game.activeSide} />
     </View>
   );
 }
@@ -469,7 +484,13 @@ const styles = StyleSheet.create({
     gap: 6,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.32)"
+    borderColor: "rgba(255,255,255,0.32)",
+    // The Peek panel's bottom edge (peekWrap: top 7% + 86% height = 93%)
+    // sits close enough to the board's bottom that it visually clipped this
+    // pill (Milestone 8.2 QA, live screenshots). PLAYING is the ground-truth
+    // needle status and must stay legible even while the Peek panel is
+    // drawn on top of it, so it explicitly outranks the Peek layer's stack.
+    zIndex: 5
   },
   sideLabelDot: {
     width: 7,

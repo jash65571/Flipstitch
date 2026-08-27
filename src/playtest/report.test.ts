@@ -79,13 +79,13 @@ test("tool usage and exits are counted per level and per session", () => {
     ...oneCompletedAttempt(1_700_000_000_000),
     makeEvent({ sessionId: "s1", name: "undo_used", levelId: "l1", timestamp: 1_700_000_010_000 }),
     makeEvent({ sessionId: "s1", name: "hint_used", levelId: "l1", timestamp: 1_700_000_011_000 }),
-    makeEvent({ sessionId: "s1", name: "preview_used", levelId: "l1", timestamp: 1_700_000_012_000 }),
+    makeEvent({ sessionId: "s1", name: "peek_used", levelId: "l1", timestamp: 1_700_000_012_000 }),
     makeEvent({ sessionId: "s1", name: "restart_used", levelId: "l1", timestamp: 1_700_000_013_000 })
   ];
   const report = buildPlaytestReport(events, LEVEL_IDS);
   assert.equal(report.undoUsage.total, 1);
   assert.equal(report.hintUsage.total, 1);
-  assert.equal(report.previewUsage.total, 1);
+  assert.equal(report.peekUsage.total, 1);
   assert.equal(report.restartUsage.total, 1);
   assert.equal(report.undoUsage.perSession, 1);
 });

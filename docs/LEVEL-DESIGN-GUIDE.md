@@ -332,8 +332,8 @@ and far cheaper than enumerating dead-end paths.
   and assert it completes with every edge used exactly once. The validator's
   `authoredSolutionIssues` does this.
 - Play it in the **actual UI**, not just the engine: hole positions must sit on
-  the hoop, edges must read as stitches, and the flip must be visible on
-  Preview.
+  the hoop, edges must read as stitches, and the opposite side must be
+  legible through Peek.
 - Assert the authored solution never transiently reports "stuck"
   (`src/game/stuck.test.ts` walks every intermediate state).
 

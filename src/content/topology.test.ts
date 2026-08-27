@@ -111,7 +111,46 @@ test("a genuinely distinct puzzle is not flagged at all", () => {
 });
 
 test("canonicalKey is a pure function of structure: repeated calls agree", () => {
-  assert.equal(canonicalKey(base), canonicalKey(base));
+  assert.equal(canonicalKey(base).key, canonicalKey(base).key);
+});
+
+test("an exhaustive canonicalization reports exhaustedBudget: false", () => {
+  const result = canonicalKey(base);
+  assert.equal(result.exhaustedBudget, false);
+  assert.ok(result.exploredLeaves > 0);
+});
+
+test("a canonicalization forced to a zero leaf budget reports exhaustedBudget: true", () => {
+  const result = canonicalKey(base, 0);
+  assert.equal(result.exhaustedBudget, true);
+});
+
+test("classifyPair returns exact under a full budget, but inexact (never exact) when forced to a tiny budget", () => {
+  const renamed = level({
+    id: "renamed",
+    startHole: "w",
+    holes: [
+      { id: "w", x: 10, y: 10 },
+      { id: "x", x: 20, y: 20 },
+      { id: "y", x: 30, y: 30 },
+      { id: "z", x: 40, y: 40 }
+    ],
+    frontEdges: [{ from: "w", to: "x" }, { from: "y", to: "x" }],
+    backEdges: [{ from: "x", to: "y" }, { from: "x", to: "z" }]
+  });
+  assert.equal(classifyPair(base, renamed), "exact");
+  assert.equal(classifyPair(base, renamed, 0), "inexact");
+});
+
+test("validateCatalogTopology refuses to certify (ok: false) when forced to a budget that cannot complete", async () => {
+  const { validateCatalogTopology } = await import("./duplicates.ts");
+  const reportExhaustive = validateCatalogTopology([base]);
+  assert.equal(reportExhaustive.inexact.length, 0);
+
+  const other = level({ id: "other", startHole: "c" });
+  const reportForcedInexact = validateCatalogTopology([base, other], 0);
+  assert.equal(reportForcedInexact.inexact.length, 1);
+  assert.equal(reportForcedInexact.ok, false);
 });
 
 test("Collection 02's shipped catalog contains no unapproved exact or mirrored topology duplicates", () => {

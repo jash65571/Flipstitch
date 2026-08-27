@@ -20,6 +20,7 @@
     "scan:analytics": "node scripts/scan-analytics.mjs",
     "analyze:levels": "node --experimental-strip-types --no-warnings scripts/analyze-levels.mjs",
     "bench:analyzer": "node --experimental-strip-types --no-warnings scripts/benchmark-analyzer.mjs",
+    "bench:topology": "node --experimental-strip-types --no-warnings scripts/benchmark-topology.mjs",
     "build:android:internal": "eas build --platform android --profile internal",
     "build:android:production": "eas build --platform android --profile production",
     "check": "npm test && npm run typecheck && npm run analyze:levels && npm run doctor && npm run validate:audio && npm run scan:analytics"

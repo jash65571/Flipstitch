@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Animated,
+  AppState,
   Pressable,
   StyleSheet,
   Text,
@@ -137,6 +138,18 @@ export function GameScreen({
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
     const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => subscription.remove();
+  }, []);
+
+  // Peek is a temporary read-only inspection, not a real game state — it
+  // must never persist across an app backgrounding, the way a real stitch
+  // does. Close it (silently; no feedback event, matching handlePeek's own
+  // policy of only emitting on an explicit player action) whenever the app
+  // leaves the foreground.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active") setPeekSide(null);
+    });
     return () => subscription.remove();
   }, []);
 
@@ -335,7 +348,7 @@ export function GameScreen({
     setHint(null);
     feedback.emit("peekToggled");
     say(next ? peekEnterAnnouncement(next, game.activeSide) : peekExitAnnouncement(game.activeSide));
-    playtest.track({ name: "preview_used", levelId: level.id, attemptId: attemptId ?? undefined });
+    playtest.track({ name: "peek_used", levelId: level.id, attemptId: attemptId ?? undefined });
   }
 
   // Staged, opt-in help. Each tap escalates one rung: concept -> region -> exact
