@@ -16,26 +16,30 @@ import type { ChapterSource } from "../../types.ts";
 const brambleFork: Level = assertValidLevel({
   id: "bramble-fork-16",
   title: "Bramble Fork",
-  difficulty: "Easy",
+  difficulty: "Moderate",
   startSide: "front",
   startHole: "s",
   holes: [
-    { id: "s", x: 50, y: 88 }, { id: "h", x: 50, y: 56 }, { id: "a", x: 14, y: 30 },
-    { id: "b", x: 50, y: 12 }, { id: "c", x: 86, y: 30 }
+    { id: "s", x: 50, y: 90 }, { id: "h", x: 50, y: 58 }, { id: "a", x: 14, y: 44 },
+    { id: "b", x: 34, y: 16 }, { id: "c", x: 66, y: 16 }, { id: "d", x: 86, y: 44 }
   ],
-  frontEdges: [{ from: "s", to: "h" }, { from: "a", to: "h" }, { from: "b", to: "h" }, { from: "c", to: "h" }],
-  backEdges: [{ from: "h", to: "a" }, { from: "h", to: "b" }, { from: "h", to: "c" }],
-  authoredSolution: ["s", "h", "a", "h", "b", "h", "c", "h"],
-  expectedSolutionCount: 6,
+  frontEdges: [
+    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "b", to: "h" }, { from: "c", to: "h" }, { from: "d", to: "h" }
+  ],
+  backEdges: [
+    { from: "h", to: "a" }, { from: "h", to: "b" }, { from: "h", to: "c" }, { from: "h", to: "d" }
+  ],
+  authoredSolution: ["s", "h", "a", "h", "b", "h", "c", "h", "d", "h"],
+  expectedSolutionCount: 24,
   unique: false,
   allowDeadEnds: false,
-  hintText: "Three brambles fork from one hub. Every opening is safe — the hub is what keeps bringing you home.",
+  hintText: "Four brambles fork from one hub. Every opening is safe — the hub is what keeps bringing you home.",
   guidance: "reduced",
   clues: {
-    concept: "All three openings are free right now, but every one of them funnels back through this same hub. That narrow hub, not the wide opening, is the real shape of the puzzle.",
+    concept: "All four openings are free right now, but every one of them funnels back through this same hub. That narrow hub, not the wide opening, is the real shape of the puzzle.",
     region: "Any bramble the hub still reaches is a safe start — the choice only gets narrower as they close."
   },
-  completionMessage: "Three brambles fork and knot at the same hub."
+  completionMessage: "Four brambles fork and knot at the same hub."
 });
 
 const thicketPath: Level = assertValidLevel({
@@ -45,28 +49,25 @@ const thicketPath: Level = assertValidLevel({
   startSide: "front",
   startHole: "s",
   holes: [
-    { id: "s", x: 50, y: 92 }, { id: "h", x: 50, y: 74 }, { id: "x", x: 28, y: 30 },
-    { id: "y", x: 72, y: 44 }, { id: "a", x: 16, y: 56 }, { id: "b", x: 22, y: 36 },
-    { id: "c", x: 84, y: 58 }, { id: "d", x: 78, y: 36 }, { id: "e", x: 62, y: 84 },
-    { id: "f", x: 76, y: 90 }, { id: "p", x: 34, y: 84 }
+    { id: "s", x: 50, y: 92 }, { id: "h", x: 50, y: 66 }, { id: "a", x: 20, y: 50 },
+    { id: "b", x: 80, y: 50 }, { id: "x", x: 30, y: 26 }, { id: "y", x: 56, y: 12 },
+    { id: "t", x: 78, y: 20 }
   ],
   frontEdges: [
-    { from: "s", to: "h" }, { from: "a", to: "x" }, { from: "b", to: "h" },
-    { from: "c", to: "y" }, { from: "d", to: "e" }, { from: "p", to: "h" }
+    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "b", to: "h" }, { from: "x", to: "y" }
   ],
   backEdges: [
-    { from: "h", to: "a" }, { from: "x", to: "b" }, { from: "h", to: "c" },
-    { from: "y", to: "d" }, { from: "e", to: "f" }, { from: "h", to: "p" }
+    { from: "h", to: "a" }, { from: "h", to: "b" }, { from: "h", to: "x" }, { from: "y", to: "t" }
   ],
-  authoredSolution: ["s", "h", "a", "x", "b", "h", "p", "h", "c", "y", "d", "e", "f"],
+  authoredSolution: ["s", "h", "a", "h", "b", "h", "x", "y", "t"],
   expectedSolutionCount: 2,
   unique: false,
   allowDeadEnds: true,
-  hintText: "Three paths open from the hub. Two lead somewhere and back; one runs into the deep thicket and stays there.",
+  hintText: "Two paths return to the hub. The third runs three holes deep into the thicket and never comes back.",
   guidance: "reduced",
   clues: {
-    concept: "The wide opening at the hub is not the hard part — it is which of the three paths you save for last. One of them never returns to the hub once you take it.",
-    region: "The two paths that loop through a shared hole still owe their return — the deep thicket path is the one you finish on."
+    concept: "The hub offers two safe returns and one deep lane; the deep lane must be the last thing you take, once nothing else is owed.",
+    region: "The two wings nearest the hub still owe their return — the thicket lane is the one you finish on."
   },
   completionMessage: "The thicket opens onto a single clean path."
 });
@@ -78,26 +79,25 @@ const twinThorns: Level = assertValidLevel({
   startSide: "front",
   startHole: "s",
   holes: [
-    { id: "s", x: 50, y: 90 }, { id: "h", x: 50, y: 60 }, { id: "a", x: 18, y: 34 },
-    { id: "b", x: 50, y: 10 }, { id: "c", x: 82, y: 34 }, { id: "i", x: 90, y: 60 },
-    { id: "d", x: 78, y: 84 }, { id: "e", x: 54, y: 92 }
+    { id: "s", x: 50, y: 92 }, { id: "h", x: 50, y: 62 }, { id: "a", x: 16, y: 40 },
+    { id: "b", x: 50, y: 20 }, { id: "c", x: 82, y: 40 }, { id: "d", x: 90, y: 66 },
+    { id: "r", x: 78, y: 86 }, { id: "t", x: 56, y: 96 }
   ],
   frontEdges: [
-    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "b", to: "h" },
-    { from: "c", to: "i" }, { from: "d", to: "e" }
+    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "b", to: "h" }, { from: "c", to: "d" }, { from: "h", to: "r" }
   ],
   backEdges: [
-    { from: "h", to: "a" }, { from: "h", to: "b" }, { from: "h", to: "c" }, { from: "i", to: "d" }
+    { from: "h", to: "a" }, { from: "h", to: "b" }, { from: "h", to: "c" }, { from: "d", to: "h" }, { from: "r", to: "t" }
   ],
-  authoredSolution: ["s", "h", "a", "h", "b", "h", "c", "i", "d", "e"],
-  expectedSolutionCount: 2,
+  authoredSolution: ["s", "h", "a", "h", "b", "h", "c", "d", "h", "r", "t"],
+  expectedSolutionCount: 12,
   unique: false,
   allowDeadEnds: true,
-  hintText: "One thorn is a runner that never returns to the hub. Take it last, after the two safe loops.",
+  hintText: "Two branches off the hub look almost the same length as a third. Only the two loops actually come back.",
   guidance: "minimal",
   clues: {
-    concept: "Two spokes at the hub loop safely home; the third is a runner that leaves for good. The runner looks identical to the others until you follow it — take it only once nothing else is owed.",
-    region: "The hub still holds two safe loops open — resolve both before the thorn that runs away."
+    concept: "The loop and the runner are shaped alike — both leave the hub and come back around — but only the loop actually returns to the hub. Take the runner last, once nothing else is owed.",
+    region: "The two short wings and the loop all still owe the hub a return — the runner is the one that doesn't."
   },
   completionMessage: "Both thorns close clean, and the runner carries the thread home."
 });
@@ -105,32 +105,29 @@ const twinThorns: Level = assertValidLevel({
 const snaredVine: Level = assertValidLevel({
   id: "snared-vine-19",
   title: "Snared Vine",
-  difficulty: "Tricky",
+  difficulty: "Moderate",
   startSide: "front",
   startHole: "s",
   holes: [
-    { id: "s", x: 50, y: 92 }, { id: "h", x: 50, y: 74 }, { id: "x", x: 28, y: 30 },
-    { id: "y", x: 72, y: 44 }, { id: "a", x: 16, y: 56 }, { id: "b", x: 22, y: 36 },
-    { id: "c", x: 84, y: 58 }, { id: "d", x: 78, y: 36 }, { id: "e", x: 62, y: 84 },
-    { id: "f", x: 76, y: 90 }, { id: "p", x: 34, y: 84 }
+    { id: "s", x: 50, y: 94 }, { id: "h", x: 50, y: 68 }, { id: "a", x: 18, y: 54 },
+    { id: "x", x: 78, y: 50 }, { id: "y", x: 90, y: 74 }, { id: "p", x: 28, y: 28 },
+    { id: "q", x: 50, y: 10 }, { id: "t", x: 72, y: 20 }
   ],
   frontEdges: [
-    { from: "s", to: "h" }, { from: "a", to: "x" }, { from: "b", to: "h" },
-    { from: "c", to: "y" }, { from: "d", to: "e" }, { from: "p", to: "h" }
+    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "x", to: "y" }, { from: "h", to: "p" }, { from: "q", to: "t" }
   ],
   backEdges: [
-    { from: "h", to: "a" }, { from: "x", to: "b" }, { from: "h", to: "c" },
-    { from: "y", to: "d" }, { from: "e", to: "f" }, { from: "h", to: "p" }
+    { from: "h", to: "a" }, { from: "h", to: "x" }, { from: "y", to: "h" }, { from: "p", to: "q" }
   ],
-  authoredSolution: ["s", "h", "a", "x", "b", "h", "p", "h", "c", "y", "d", "e", "f"],
-  expectedSolutionCount: 2,
+  authoredSolution: ["s", "h", "a", "h", "x", "y", "h", "p", "q", "t"],
+  expectedSolutionCount: 4,
   unique: false,
   allowDeadEnds: true,
-  hintText: "Three converging paths meet at the hub again, and one of them still runs into the thicket for good.",
+  hintText: "A vine loops back on itself, and a longer vine runs deep and stays there.",
   guidance: "minimal",
   clues: {
-    concept: "This vine reuses the same shape as the thicket — a wide, safe-looking opening at the hub that narrows to one true order. Read which path is the runner before you touch it.",
-    region: "The two looping paths through the shared holes still owe their return — the runner is the last stitch, same as before."
+    concept: "This vine reuses the same twin shape as the thorns — a loop that returns, and a longer runner that doesn't. Read which is which before you commit.",
+    region: "The wing and the loop both still owe the hub a return — the runner is the last stitch, same as before."
   },
   completionMessage: "The vine tangles, snares, and still comes home clean."
 });
@@ -142,33 +139,32 @@ const knotsEnd: Level = assertValidLevel({
   startSide: "front",
   startHole: "a",
   holes: [
-    { id: "a", x: 10, y: 80 }, { id: "b", x: 22, y: 68 }, { id: "c", x: 12, y: 48 },
-    { id: "d", x: 36, y: 58 }, { id: "e", x: 31, y: 32 }, { id: "f", x: 50, y: 48 },
-    { id: "g", x: 48, y: 22 }, { id: "h", x: 64, y: 56 }, { id: "i", x: 60, y: 30 },
-    { id: "j", x: 76, y: 70 }, { id: "k", x: 70, y: 46 }, { id: "l", x: 84, y: 84 },
-    { id: "m", x: 80, y: 62 }, { id: "o", x: 90, y: 72 }, { id: "n", x: 96, y: 84 }
+    { id: "a", x: 6, y: 82 }, { id: "b", x: 18, y: 68 }, { id: "c", x: 10, y: 46 },
+    { id: "d", x: 32, y: 56 }, { id: "e", x: 28, y: 30 },
+    { id: "f", x: 48, y: 46 }, { id: "g", x: 46, y: 22 }, { id: "g2", x: 62, y: 20 }, { id: "h", x: 62, y: 56 },
+    { id: "i", x: 60, y: 32 }, { id: "j", x: 78, y: 66 }, { id: "k", x: 74, y: 42 },
+    { id: "l", x: 92, y: 80 }, { id: "m", x: 86, y: 58 }, { id: "o", x: 96, y: 68 }, { id: "n", x: 100, y: 82 }
   ],
   frontEdges: [
-    { from: "a", to: "b" }, { from: "c", to: "b" }, { from: "d", to: "e" },
-    { from: "d", to: "f" }, { from: "g", to: "f" }, { from: "h", to: "i" },
-    { from: "h", to: "j" }, { from: "k", to: "j" }, { from: "l", to: "m" },
-    { from: "l", to: "o" }
+    { from: "a", to: "b" }, { from: "c", to: "b" }, { from: "d", to: "e" }, { from: "d", to: "f" },
+    { from: "g", to: "f" }, { from: "g2", to: "f" }, { from: "h", to: "i" }, { from: "h", to: "j" },
+    { from: "k", to: "j" }, { from: "l", to: "m" }, { from: "l", to: "o" }
   ],
   backEdges: [
-    { from: "b", to: "c" }, { from: "b", to: "d" }, { from: "e", to: "d" },
-    { from: "f", to: "g" }, { from: "f", to: "h" }, { from: "i", to: "h" },
-    { from: "j", to: "k" }, { from: "j", to: "l" }, { from: "m", to: "l" }, { from: "o", to: "n" }
+    { from: "b", to: "c" }, { from: "b", to: "d" }, { from: "e", to: "d" }, { from: "f", to: "g" },
+    { from: "f", to: "g2" }, { from: "f", to: "h" }, { from: "i", to: "h" }, { from: "j", to: "k" },
+    { from: "j", to: "l" }, { from: "m", to: "l" }, { from: "o", to: "n" }
   ],
   authoredSolution: [
-    "a", "b", "c", "b", "d", "e", "d", "f", "g", "f", "h", "i", "h", "j", "k", "j", "l", "m", "l", "o", "n"
+    "a", "b", "c", "b", "d", "e", "d", "f", "g", "f", "g2", "f", "h", "i", "h", "j", "k", "j", "l", "m", "l", "o", "n"
   ],
-  expectedSolutionCount: 1,
-  unique: true,
+  expectedSolutionCount: 2,
+  unique: false,
   allowDeadEnds: true,
-  hintText: "Four clusters, each with its own nested loop or runner. Clear each one fully before the bridge that leaves it.",
+  hintText: "Four clusters, each with its own nested loop, hub, or runner. Clear each one fully before the bridge that leaves it.",
   guidance: "minimal",
   clues: {
-    concept: "Every cluster in this sampler is one of the ideas you already know: a nested loop, an off-side hub, a converging opening, or a runner. Close each cluster completely before the bridge that carries you to the next.",
+    concept: "Every cluster in this sampler is one of the ideas you already know: a nested loop, a many-armed hub, a converging opening, or a runner. Close each cluster completely before the bridge that carries you to the next.",
     region: "The nearest cluster still holds an unclosed loop — finish it before the bridge onward."
   },
   completionMessage: "Every knot ties off, and Knot & Bramble is finished, front and back."
@@ -203,7 +199,9 @@ export const chapterTwoBrambleSnare: ChapterSource = {
     {
       level: snaredVine,
       role: "combine",
-      teaches: ["interacting-runners", "converging-openings"]
+      teaches: ["interacting-runners", "converging-openings"],
+      pacingNote:
+        "Milestone 8.1 replaced Snared Vine's graph (the shipped version was an exact topology clone of Thicket Path — see docs/COLLECTION-02-DESIGN.md). The new puzzle measures 24 points below Twin Thorns: it combines two already-taught shapes (a wing plus the twin loop-vs-runner idea) rather than raising the pressure further, so a gentler score than the pressure entry before it is the intended shape of a combine entry ahead of the capstone, not a collapse."
     },
     {
       level: knotsEnd,

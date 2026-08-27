@@ -16,7 +16,7 @@ export type IconName =
   | "front"
   | "back"
   | "undo"
-  | "preview"
+  | "peek"
   | "hint"
   | "locked"
   | "completed"
@@ -93,7 +93,7 @@ function IconView({ name, size = 24, color = colors.ink, accent, strokeWidth = 2
         </G>
       ) : null}
 
-      {name === "preview" ? (
+      {name === "peek" ? (
         <G>
           <Path d="M2.5 12s3.6-5.2 9.5-5.2S21.5 12 21.5 12s-3.6 5.2-9.5 5.2S2.5 12 2.5 12Z" {...common} />
           <Circle cx={12} cy={12} r={2.6} {...common} />

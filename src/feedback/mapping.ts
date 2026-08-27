@@ -14,7 +14,8 @@ export type FeedbackEvent =
   | "hint"
   | "levelCompleted"
   | "levelUnlocked"
-  | "gallerySelected";
+  | "gallerySelected"
+  | "peekToggled";
 
 export type SoundName =
   | "needle-pierce"
@@ -102,6 +103,16 @@ export const FEEDBACK_MAP: Record<FeedbackEvent, FeedbackPlan> = {
     sounds: [{ name: "gallery-selection" }],
     haptic: "light",
     hapticGroup: "tool"
+  },
+  // Peek is a read-only inspection, not a real side change: it deliberately
+  // does not reuse sideChanged's hoop-flip sound or soft haptic. Milestone
+  // 8.1 tested a subtle peek-specific cue and found silence read more
+  // clearly as "nothing about the real game state just happened" — see
+  // docs/PREVIEW-INTERACTION.md.
+  peekToggled: {
+    sounds: [],
+    haptic: null,
+    hapticGroup: "peek"
   }
 };
 

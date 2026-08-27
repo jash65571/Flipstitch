@@ -15,6 +15,7 @@ import Svg, {
 } from "react-native-svg";
 
 import { availableNodes, edgeKey } from "@/game/engine";
+import { needleAnchorNote, peekingStatus, playingStatus } from "@/game/peek";
 import { targetEdges } from "@/game/solver";
 import type { GameState, GuidanceLevel, Level, Side, StitchHole } from "@/game/types";
 import { decorativeSvgA11yProps } from "@/components/decorativeA11y";
@@ -23,7 +24,6 @@ import { colors, radius, thread, type } from "@/theme/tokens";
 type HoopBoardProps = {
   level: Level;
   game: GameState;
-  visibleSide: Side;
   size: number;
   /** Stage-3 hint: the single exact hole, ringed. */
   hintNode: string | null;
@@ -31,7 +31,10 @@ type HoopBoardProps = {
   regionHoles?: string[];
   /** Controls how much the board pre-highlights legal destinations. */
   guidance?: GuidanceLevel;
-  previewing: boolean;
+  /** Non-null while the player is inspecting the opposite side. The play
+   *  layer below always keeps showing `game.activeSide` — Peek never
+   *  changes what the board's live layer renders. */
+  peekSide: Side | null;
   interactionDisabled?: boolean;
   onNodePress: (nodeId: string) => void;
 };
@@ -46,45 +49,55 @@ function pointFor(node: StitchHole, side: Side, size: number) {
   };
 }
 
-function HoopBoardView({
+/** The always-live, always-interactive layer: the real, current game side.
+ *  Never reads `peekSide` — that is the whole point of the split. */
+function PlayLayer({
   level,
   game,
-  visibleSide,
   size,
   hintNode,
   regionHoles,
   guidance = "full",
-  previewing,
-  interactionDisabled = false,
+  dimmed,
+  interactionDisabled,
   onNodePress
-}: HoopBoardProps) {
+}: {
+  level: Level;
+  game: GameState;
+  size: number;
+  hintNode: string | null;
+  regionHoles?: string[];
+  guidance?: GuidanceLevel;
+  /** True while a Peek panel is layered on top, so the play layer recedes
+   *  visually without pretending the real side changed. */
+  dimmed: boolean;
+  interactionDisabled: boolean;
+  onNodePress: (nodeId: string) => void;
+}) {
+  const side = game.activeSide;
   const nodeById = useMemo(() => new Map(level.holes.map((hole) => [hole.id, hole])), [level.holes]);
   const validTargets = useMemo(() => new Set(availableNodes(level, game)), [game, level]);
   const regionSet = useMemo(() => new Set(regionHoles ?? []), [regionHoles]);
-  const sideThread = visibleSide === "front" ? thread.front : thread.back;
+  const sideThread = side === "front" ? thread.front : thread.back;
   const threadColor = sideThread.core;
   const threadDeep = sideThread.deep;
   const softColor = sideThread.soft;
-  const currentPoint = pointFor(nodeById.get(game.currentHole)!, visibleSide, size);
-  const showNeedle = !previewing && visibleSide === game.activeSide;
-  const onActiveSide = !previewing && visibleSide === game.activeSide;
-  // Full guidance glows every legal destination (teaching levels). Reduced and
-  // minimal guidance stop pre-highlighting; the player reads the pattern. A
-  // staged region hint still reveals its branch regardless of guidance. The
-  // dashed back stitches are the shape cue for the back; front stays solid.
-  const showAllTargets = guidance === "full";
-  const dashOpacity = guidance === "minimal" ? 0.5 : 1;
+  const currentPoint = pointFor(nodeById.get(game.currentHole)!, side, size);
+  const showAllTargets = guidance === "full" && !dimmed;
+  const dashOpacity = (guidance === "minimal" ? 0.5 : 1) * (dimmed ? 0.55 : 1);
 
   return (
     <View
       accessible={false}
+      importantForAccessibility={dimmed ? "no-hide-descendants" : "auto"}
       style={[
         styles.frame,
         {
           width: size,
           height: size,
           borderRadius: size / 2,
-          shadowColor: threadDeep
+          shadowColor: threadDeep,
+          opacity: dimmed ? 0.4 : 1
         }
       ]}
     >
@@ -130,8 +143,8 @@ function HoopBoardView({
           stroke={threadColor}
           strokeWidth={size * 0.01}
           strokeLinecap="round"
-          opacity={previewing ? 0.32 : 0.68}
-          strokeDasharray={visibleSide === "back" ? `${size * 0.02} ${size * 0.026}` : undefined}
+          opacity={dimmed ? 0.28 : 0.68}
+          strokeDasharray={side === "back" ? `${size * 0.02} ${size * 0.026}` : undefined}
         />
         <Path
           d={`M ${size * 0.17} ${size * 0.27} A ${size * 0.39} ${size * 0.39} 0 0 1 ${size * 0.68} ${size * 0.105}`}
@@ -147,10 +160,10 @@ function HoopBoardView({
         <Line x1={size * 0.475} y1={size * 0.022} x2={size * 0.525} y2={size * 0.022} stroke={colors.woodDark} strokeWidth={2} />
 
         {targetEdges(level)
-          .filter((edge) => edge.side === visibleSide)
+          .filter((edge) => edge.side === side)
           .map((edge) => {
-            const from = pointFor(nodeById.get(edge.from)!, visibleSide, size);
-            const to = pointFor(nodeById.get(edge.to)!, visibleSide, size);
+            const from = pointFor(nodeById.get(edge.from)!, side, size);
+            const to = pointFor(nodeById.get(edge.to)!, side, size);
             const used = game.usedEdges.has(edgeKey(edge));
             return (
               <G key={edgeKey(edge)}>
@@ -204,12 +217,9 @@ function HoopBoardView({
           })}
 
         {level.holes.map((hole) => {
-          const point = pointFor(hole, visibleSide, size);
-          const current = showNeedle && hole.id === game.currentHole;
-          const isValid = onActiveSide && validTargets.has(hole.id);
-          // Glow when guidance hands out targets, or when a staged region hint
-          // has surfaced this branch. Accessibility labels below always expose
-          // valid moves regardless of this visual choice.
+          const point = pointFor(hole, side, size);
+          const current = hole.id === game.currentHole;
+          const isValid = !dimmed && validTargets.has(hole.id);
           const glow = isValid && (showAllTargets || regionSet.has(hole.id));
           return (
             <G key={hole.id}>
@@ -227,58 +237,58 @@ function HoopBoardView({
           );
         })}
 
-        {showNeedle ? (
-          <G>
-            <Path
-              d={`M ${currentPoint.x} ${currentPoint.y} Q ${currentPoint.x + size * 0.04} ${currentPoint.y + size * 0.08} ${currentPoint.x + size * 0.1} ${currentPoint.y + size * 0.075}`}
-              fill="none"
-              stroke={threadColor}
-              strokeWidth={size * 0.012}
-              strokeLinecap="round"
-            />
-            <Line
-              x1={currentPoint.x - size * 0.035}
-              y1={currentPoint.y + size * 0.04}
-              x2={currentPoint.x + size * 0.05}
-              y2={currentPoint.y - size * 0.055}
-              stroke={colors.ink}
-              strokeWidth={size * 0.018}
-              strokeLinecap="round"
-              opacity={0.18}
-            />
-            <Line
-              x1={currentPoint.x - size * 0.04}
-              y1={currentPoint.y + size * 0.032}
-              x2={currentPoint.x + size * 0.045}
-              y2={currentPoint.y - size * 0.062}
-              stroke="url(#metal)"
-              strokeWidth={size * 0.011}
-              strokeLinecap="round"
-            />
-            <Ellipse
-              cx={currentPoint.x + size * 0.038}
-              cy={currentPoint.y - size * 0.054}
-              rx={size * 0.006}
-              ry={size * 0.012}
-              fill={threadDeep}
-              transform={`rotate(42 ${currentPoint.x + size * 0.038} ${currentPoint.y - size * 0.054})`}
-            />
-          </G>
-        ) : null}
+        <G>
+          <Path
+            d={`M ${currentPoint.x} ${currentPoint.y} Q ${currentPoint.x + size * 0.04} ${currentPoint.y + size * 0.08} ${currentPoint.x + size * 0.1} ${currentPoint.y + size * 0.075}`}
+            fill="none"
+            stroke={threadColor}
+            strokeWidth={size * 0.012}
+            strokeLinecap="round"
+          />
+          <Line
+            x1={currentPoint.x - size * 0.035}
+            y1={currentPoint.y + size * 0.04}
+            x2={currentPoint.x + size * 0.05}
+            y2={currentPoint.y - size * 0.055}
+            stroke={colors.ink}
+            strokeWidth={size * 0.018}
+            strokeLinecap="round"
+            opacity={0.18}
+          />
+          <Line
+            x1={currentPoint.x - size * 0.04}
+            y1={currentPoint.y + size * 0.032}
+            x2={currentPoint.x + size * 0.045}
+            y2={currentPoint.y - size * 0.062}
+            stroke="url(#metal)"
+            strokeWidth={size * 0.011}
+            strokeLinecap="round"
+          />
+          <Ellipse
+            cx={currentPoint.x + size * 0.038}
+            cy={currentPoint.y - size * 0.054}
+            rx={size * 0.006}
+            ry={size * 0.012}
+            fill={threadDeep}
+            transform={`rotate(42 ${currentPoint.x + size * 0.038} ${currentPoint.y - size * 0.054})`}
+          />
+        </G>
       </Svg>
 
       {level.holes.map((hole) => {
-        const point = pointFor(hole, visibleSide, size);
-        const isHint = !previewing && hintNode === hole.id && visibleSide === game.activeSide;
-        const isCurrent = !previewing && hole.id === game.currentHole && visibleSide === game.activeSide;
-        const isValid = !previewing && visibleSide === game.activeSide && validTargets.has(hole.id);
+        const point = pointFor(hole, side, size);
+        const isHint = !dimmed && hintNode === hole.id;
+        const isCurrent = hole.id === game.currentHole;
+        const isValid = !dimmed && validTargets.has(hole.id);
         const stateLabel = isCurrent ? "needle position" : isValid ? "valid stitch" : "not available";
         return (
           <Pressable
             key={hole.id}
             accessibilityRole="button"
             accessibilityLabel={`Hole ${hole.id.toUpperCase()}, ${stateLabel}`}
-            accessibilityHint={isValid ? "Places one stitch and flips the hoop" : undefined}
+            accessibilityHint={isValid && !dimmed ? "Places one stitch and flips the hoop" : undefined}
+            accessibilityElementsHidden={dimmed}
+            importantForAccessibility={dimmed ? "no-hide-descendants" : "auto"}
             accessibilityState={{ disabled: interactionDisabled }}
             disabled={interactionDisabled}
             hitSlop={4}
@@ -297,14 +307,118 @@ function HoopBoardView({
         );
       })}
 
-      <View style={[styles.sideLabel, { backgroundColor: threadDeep }]} pointerEvents="none">
+      <View
+        accessible
+        accessibilityLabel={playingStatus(side)}
+        style={[styles.sideLabel, { backgroundColor: threadDeep }]}
+      >
         <View style={[styles.sideLabelDot, { backgroundColor: threadColor }]} />
-        <Text style={styles.sideLabelText}>{visibleSide === "front" ? "FRONT" : "BACK"}</Text>
+        <Text style={styles.sideLabelText}>{side === "front" ? "PLAYING · FRONT" : "PLAYING · BACK"}</Text>
       </View>
+    </View>
+  );
+}
 
-      {previewing ? (
-        <View style={styles.previewBadge} pointerEvents="none">
-          <Text style={styles.previewText}>LOOKING ONLY</Text>
+/** A read-only inspection layer. Renders the opposite side's pattern with no
+ *  needle, no legal-move glow, and no interactive holes — nothing here can
+ *  be mistaken for "you can stitch this now". */
+function PeekLayer({ level, peekSide, activeSide, size }: { level: Level; peekSide: Side; activeSide: Side; size: number }) {
+  const nodeById = useMemo(() => new Map(level.holes.map((hole) => [hole.id, hole])), [level.holes]);
+  const sideThread = peekSide === "front" ? thread.front : thread.back;
+
+  return (
+    <View
+      accessible
+      accessibilityLabel={`${peekingStatus(peekSide)}. Read only. ${needleAnchorNote(activeSide)}.`}
+      importantForAccessibility="yes"
+      style={[
+        styles.peekFrame,
+        {
+          width: size * 0.86,
+          height: size * 0.86,
+          borderRadius: (size * 0.86) / 2,
+          borderColor: sideThread.deep
+        }
+      ]}
+    >
+      <Svg width={size * 0.86} height={size * 0.86} pointerEvents="none" {...decorativeSvgA11yProps}>
+        <Circle cx={(size * 0.86) / 2} cy={(size * 0.86) / 2} r={size * 0.86 * 0.47} fill={colors.linen} opacity={0.96} />
+        {targetEdges(level)
+          .filter((edge) => edge.side === peekSide)
+          .map((edge) => {
+            const from = pointFor(nodeById.get(edge.from)!, peekSide, size * 0.86);
+            const to = pointFor(nodeById.get(edge.to)!, peekSide, size * 0.86);
+            return (
+              <Line
+                key={edgeKey({ ...edge, side: peekSide })}
+                x1={from.x}
+                y1={from.y}
+                x2={to.x}
+                y2={to.y}
+                stroke={sideThread.soft}
+                strokeWidth={size * 0.009}
+                strokeLinecap="round"
+                strokeDasharray={`${size * 0.012} ${size * 0.022}`}
+                opacity={0.85}
+              />
+            );
+          })}
+        {level.holes.map((hole) => {
+          const point = pointFor(hole, peekSide, size * 0.86);
+          return (
+            <Circle
+              key={hole.id}
+              cx={point.x}
+              cy={point.y}
+              r={size * 0.012}
+              fill="none"
+              stroke={colors.inkSoft}
+              strokeWidth={size * 0.006}
+              opacity={0.7}
+            />
+          );
+        })}
+      </Svg>
+
+      <View style={[styles.peekTab, { backgroundColor: sideThread.deep }]} pointerEvents="none">
+        <Text style={styles.peekTabText}>{peekingStatus(peekSide)}</Text>
+      </View>
+      <View style={styles.peekAnchor} pointerEvents="none">
+        <Text style={styles.peekAnchorText}>{needleAnchorNote(activeSide)}</Text>
+      </View>
+    </View>
+  );
+}
+
+function HoopBoardView({
+  level,
+  game,
+  size,
+  hintNode,
+  regionHoles,
+  guidance = "full",
+  peekSide,
+  interactionDisabled = false,
+  onNodePress
+}: HoopBoardProps) {
+  const peeking = peekSide !== null;
+
+  return (
+    <View style={{ width: size, height: size }}>
+      <PlayLayer
+        level={level}
+        game={game}
+        size={size}
+        hintNode={peeking ? null : hintNode}
+        regionHoles={peeking ? undefined : regionHoles}
+        guidance={guidance}
+        dimmed={peeking}
+        interactionDisabled={interactionDisabled || peeking}
+        onNodePress={onNodePress}
+      />
+      {peekSide !== null ? (
+        <View style={styles.peekWrap} pointerEvents="none">
+          <PeekLayer level={level} peekSide={peekSide} activeSide={game.activeSide} size={size} />
         </View>
       ) : null}
     </View>
@@ -366,19 +480,51 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.1
   },
-  previewBadge: {
+  // The Peek panel is offset toward one corner rather than centered exactly
+  // on the play layer, so it visibly reads as a lifted second layer of
+  // cloth rather than a full-screen replacement of the board.
+  peekWrap: {
     position: "absolute",
-    top: 28,
+    top: "7%",
+    left: "13%"
+  },
+  peekFrame: {
+    backgroundColor: colors.linen,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.24,
+    shadowRadius: 18,
+    elevation: 14
+  },
+  peekTab: {
+    position: "absolute",
+    top: -14,
     alignSelf: "center",
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    backgroundColor: colors.ink,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: radius.pill
   },
-  previewText: {
+  peekTabText: {
     color: colors.white,
     fontFamily: type.bodyBold,
     fontSize: 10,
-    letterSpacing: 1.15
+    letterSpacing: 1.1
+  },
+  peekAnchor: {
+    position: "absolute",
+    bottom: -14,
+    alignSelf: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    backgroundColor: colors.ink,
+    borderRadius: radius.pill
+  },
+  peekAnchorText: {
+    color: colors.white,
+    fontFamily: type.bodyMedium,
+    fontSize: 9,
+    letterSpacing: 0.4
   }
 });

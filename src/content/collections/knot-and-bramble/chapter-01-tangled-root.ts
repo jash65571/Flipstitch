@@ -71,31 +71,30 @@ const twinRoots: Level = assertValidLevel({
 const barkHollow: Level = assertValidLevel({
   id: "bark-hollow-13",
   title: "Bark Hollow",
-  difficulty: "Moderate",
+  difficulty: "Tricky",
   startSide: "front",
-  startHole: "a",
+  startHole: "s",
   holes: [
-    { id: "a", x: 14, y: 50 }, { id: "b", x: 40, y: 50 }, { id: "c", x: 40, y: 24 },
-    { id: "d", x: 64, y: 40 }, { id: "e", x: 80, y: 56 }, { id: "f", x: 66, y: 72 },
-    { id: "g", x: 48, y: 78 }, { id: "h", x: 30, y: 78 }
+    { id: "s", x: 50, y: 90 }, { id: "h", x: 50, y: 58 }, { id: "a", x: 20, y: 40 },
+    { id: "b", x: 80, y: 40 }, { id: "c", x: 50, y: 26 }, { id: "d", x: 50, y: 6 }
   ],
   frontEdges: [
-    { from: "a", to: "b" }, { from: "c", to: "b" }, { from: "d", to: "e" }, { from: "f", to: "g" }
+    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "b", to: "h" }, { from: "c", to: "d" }
   ],
   backEdges: [
-    { from: "b", to: "c" }, { from: "b", to: "d" }, { from: "e", to: "f" }, { from: "g", to: "h" }
+    { from: "h", to: "a" }, { from: "h", to: "b" }, { from: "h", to: "c" }
   ],
-  authoredSolution: ["a", "b", "c", "b", "d", "e", "f", "g", "h"],
-  expectedSolutionCount: 1,
-  unique: true,
+  authoredSolution: ["s", "h", "a", "h", "b", "h", "c", "d"],
+  expectedSolutionCount: 2,
+  unique: false,
   allowDeadEnds: true,
-  hintText: "The hollow reads differently depending on which side you arrive from. Close the near loop first.",
+  hintText: "The hollow's hub hides a third door. Two lead safely home; the third leads only deeper in.",
   guidance: "reduced",
   clues: {
-    concept: "This hub's front and back do not offer the same number of exits. Arrive from one side and it is a junction; arrive from the other and it is a single lane out.",
-    region: "The near loop still owes its return — settle it before the long lane carries you away for good."
+    concept: "Two of the hub's branches return the way they came; the third does not — once you step through it, the hub cannot be reached again.",
+    region: "Close both wings that still return before you try the branch that only goes one way."
   },
-  completionMessage: "You read the hollow from both sides and it held."
+  completionMessage: "The hollow's third door finally closes, and you're still holding the thread."
 });
 
 const oldGrowth: Level = assertValidLevel({
@@ -132,32 +131,31 @@ const oldGrowth: Level = assertValidLevel({
 const deepTaproot: Level = assertValidLevel({
   id: "deep-taproot-14",
   title: "Deep Taproot",
-  difficulty: "Tricky",
+  difficulty: "Moderate",
   startSide: "front",
   startHole: "s",
   holes: [
-    { id: "s", x: 50, y: 90 }, { id: "h", x: 50, y: 56 }, { id: "a", x: 16, y: 26 },
-    { id: "b", x: 50, y: 10 }, { id: "c", x: 84, y: 26 }, { id: "d", x: 84, y: 72 },
-    { id: "e", x: 62, y: 88 }, { id: "f", x: 38, y: 84 }
+    { id: "s", x: 50, y: 92 }, { id: "h", x: 50, y: 62 }, { id: "a", x: 18, y: 62 },
+    { id: "p", x: 66, y: 40 }, { id: "q", x: 50, y: 22 }, { id: "r", x: 84, y: 62 },
+    { id: "t", x: 84, y: 88 }
   ],
   frontEdges: [
-    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "b", to: "h" },
-    { from: "c", to: "d" }, { from: "e", to: "f" }
+    { from: "s", to: "h" }, { from: "a", to: "h" }, { from: "p", to: "q" }, { from: "h", to: "r" }
   ],
   backEdges: [
-    { from: "h", to: "a" }, { from: "h", to: "b" }, { from: "h", to: "c" }, { from: "d", to: "e" }
+    { from: "h", to: "a" }, { from: "h", to: "p" }, { from: "q", to: "h" }, { from: "r", to: "t" }
   ],
-  authoredSolution: ["s", "h", "a", "h", "b", "h", "c", "d", "e", "f"],
-  expectedSolutionCount: 2,
+  authoredSolution: ["s", "h", "a", "h", "p", "q", "h", "r", "t"],
+  expectedSolutionCount: 4,
   unique: false,
   allowDeadEnds: true,
-  hintText: "The taproot hub offers two safe loops and one lane that never comes back. Save the lane for last.",
+  hintText: "A root dives two holes deep before it surfaces, and a fourth path never comes back at all.",
   guidance: "reduced",
   clues: {
-    concept: "Two of the hub's spokes are nested returns; the third is a taproot that runs on and never resurfaces. Read which spoke is which before you commit to it.",
-    region: "From the hub, the two returning loops are still owed — the long taproot lane is the last thing you take."
+    concept: "The dive must fully surface before the hub is free again, and one of the hub's remaining doors runs on for good — save it for last.",
+    region: "The wing and the deep root both still owe the hub a return — the last open door is the one that doesn't."
   },
-  completionMessage: "The taproot runs deep and the sampler still stands."
+  completionMessage: "The taproot surfaces, and the hub still holds."
 });
 
 export const chapterOneTangledRoot: ChapterSource = {
@@ -187,7 +185,9 @@ export const chapterOneTangledRoot: ChapterSource = {
     {
       level: deepTaproot,
       role: "combine",
-      teaches: ["asymmetric-hub", "nested-obligation", "ordering-discipline", "hub"]
+      teaches: ["asymmetric-hub", "nested-obligation", "ordering-discipline", "hub"],
+      pacingNote:
+        "Milestone 8.1 replaced Deep Taproot's graph (the shipped version was an exact topology clone of Orbit Bloom — see docs/COLLECTION-02-DESIGN.md). The new, genuinely distinct puzzle measures 13 points below Bark Hollow: it combines two already-taught shapes (a nested dive plus a hub with one true trap door) rather than introducing new pressure, so a softer score than the twist that precedes it is the intended shape of a combine entry, not a collapse."
     },
     {
       level: oldGrowth,

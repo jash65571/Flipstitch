@@ -13,6 +13,7 @@
 import { measureLevel } from "../src/game/analyzer.ts";
 import { catalog } from "../src/content/catalog.ts";
 import { validateCatalogPacing } from "../src/content/pacing.ts";
+import { validateCatalogTopology } from "../src/content/duplicates.ts";
 import { guidanceFor } from "../src/game/engine.ts";
 
 const asJson = process.argv.includes("--json");
@@ -40,6 +41,7 @@ for (const collection of catalog.collections) {
 }
 
 const pacing = validateCatalogPacing();
+const topology = validateCatalogTopology();
 
 if (asJson) {
   console.log(
@@ -57,13 +59,14 @@ if (asJson) {
           metrics: row.metrics,
           score: row.score
         })),
-        pacing
+        pacing,
+        topology
       },
       null,
       2
     )
   );
-  process.exit(pacing.ok ? 0 : 1);
+  process.exit(pacing.ok && topology.ok ? 0 : 1);
 }
 
 const HEADER = [
@@ -147,4 +150,23 @@ console.log(
     " Invariants fail the build; warnings are for a human to judge."
 );
 
-process.exit(pacing.ok ? 0 : 1);
+console.log("\nTopology duplicate report");
+if (topology.unapproved.length === 0) {
+  console.log("  No unapproved EXACT or MIRRORED topology duplicates.");
+} else {
+  for (const finding of topology.unapproved) {
+    console.log(`  EXACT_TOPOLOGY_DUPLICATE  ${finding.aId} <-> ${finding.bId} (${finding.kind})`);
+  }
+}
+if (topology.near.length > 0) {
+  console.log("  Advisory NEAR duplicates (not a build failure, human review only):");
+  for (const finding of topology.near) {
+    console.log(`    near  ${finding.aId} <-> ${finding.bId}`);
+  }
+}
+console.log(
+  `\n  ${topology.exact.length} exact, ${topology.mirrored.length} mirrored, ${topology.near.length} near, ` +
+    `${topology.unapproved.length} unapproved. Unapproved exact/mirrored duplicates fail the build.`
+);
+
+process.exit(pacing.ok && topology.ok ? 0 : 1);

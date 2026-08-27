@@ -14,14 +14,15 @@ import { useFeedback } from "@/feedback/FeedbackProvider";
 import { HoopBoard } from "@/components/HoopBoard";
 import { Icon } from "@/components/Icon";
 import { LevelThumbnail } from "@/components/LevelThumbnail";
-import { createGame, guidanceFor, isGameStuck, oppositeSide, playMove, progress, stagedHint, undoMove } from "@/game/engine";
+import { createGame, guidanceFor, isGameStuck, playMove, progress, stagedHint, undoMove } from "@/game/engine";
+import { peekControlLabel, peekEnterAnnouncement, peekExitAnnouncement, togglePeek } from "@/game/peek";
 import { targetEdges } from "@/game/solver";
 import type { GameState, HintStage, Level, Side, StagedHint } from "@/game/types";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { getGameLayout } from "@/screens/layout";
 import { colors, palette, radius, space, thread, type } from "@/theme/tokens";
 
-type ToolName = "undo" | "preview" | "hint";
+type ToolName = "undo" | "peek" | "hint";
 
 type GameScreenProps = {
   level: Level;
@@ -112,7 +113,7 @@ export function GameScreen({
   const playtest = usePlaytest();
 
   const [game, setGame] = useState<GameState>(() => createGame(level));
-  const [previewSide, setPreviewSide] = useState<Side | null>(null);
+  const [peekSide, setPeekSide] = useState<Side | null>(null);
   const [hint, setHint] = useState<StagedHint | null>(null);
   const [stuck, setStuck] = useState(false);
   const [placedStitchCount, setPlacedStitchCount] = useState(0);
@@ -127,7 +128,6 @@ export function GameScreen({
   const progressValue = useRef(new Animated.Value(0)).current;
   const completionScale = useRef(new Animated.Value(0.96)).current;
   const completionOpacity = useRef(new Animated.Value(0)).current;
-  const visibleSide = previewSide ?? game.activeSide;
   const completedCount = game.usedEdges.size;
   const totalCount = targetEdges(level).length;
   const percent = Math.round(progress(level, game) * 100);
@@ -150,7 +150,7 @@ export function GameScreen({
 
   useEffect(() => {
     setGame(createGame(level));
-    setPreviewSide(null);
+    setPeekSide(null);
     setHint(null);
     setStuck(false);
     setPlacedStitchCount(0);
@@ -241,7 +241,7 @@ export function GameScreen({
   }
 
   function handleNodePress(nodeId: string) {
-    if (inputLocked.current || previewSide || game.complete) return;
+    if (inputLocked.current || peekSide || game.complete) return;
     setHint(null);
     const result = playMove(level, game, nodeId);
     if (!result.ok) {
@@ -276,7 +276,7 @@ export function GameScreen({
 
     animateSwap(() => {
       setGame(result.state);
-      setPreviewSide(null);
+      setPeekSide(null);
       setStuck(nowStuck);
       feedback.emit("sideChanged");
       if (nowStuck) {
@@ -286,9 +286,9 @@ export function GameScreen({
         say(
           result.completedNow
             ? "Thread complete. Both sides are stitched."
-            : `${result.state.activeSide === "front" ? "Front" : "Back"} side. ${
-                guidance === "full" ? "Choose the next glowing hole." : "Read the pattern for your next stitch."
-              }`
+            : guidance === "full"
+              ? "Choose the next glowing hole."
+              : "Read the pattern for your next stitch."
         );
       }
     });
@@ -315,7 +315,7 @@ export function GameScreen({
     if (game.moves.length === 0 || inputLocked.current) return;
     animateSwap(() => {
       setGame(undoMove(level, game));
-      setPreviewSide(null);
+      setPeekSide(null);
       setHint(null);
       setStuck(false);
       say("Stitch removed. The needle and side are restored.");
@@ -324,13 +324,17 @@ export function GameScreen({
     playtest.track({ name: "undo_used", levelId: level.id, attemptId: attemptId ?? undefined, moveCount: placedStitchCount });
   }
 
-  function handlePreview() {
+  // Peek is a read-only inspection of the opposite side, not a real side
+  // change: it never calls animateSwap (the hoop-flip transform is reserved
+  // for actual stitches) and never emits `sideChanged`. `activeSide` is
+  // untouched; only `peekSide` moves. See src/game/peek.ts.
+  function handlePeek() {
     if (inputLocked.current) return;
-    animateSwap(() => {
-      setPreviewSide((current) => (current ? null : oppositeSide(game.activeSide)));
-      setHint(null);
-      feedback.emit("sideChanged");
-    });
+    const next = togglePeek(game.activeSide, peekSide);
+    setPeekSide(next);
+    setHint(null);
+    feedback.emit("peekToggled");
+    say(next ? peekEnterAnnouncement(next, game.activeSide) : peekExitAnnouncement(game.activeSide));
     playtest.track({ name: "preview_used", levelId: level.id, attemptId: attemptId ?? undefined });
   }
 
@@ -341,7 +345,7 @@ export function GameScreen({
     if (inputLocked.current) return;
     const nextStage = (hint ? Math.min(3, hint.stage + 1) : 1) as HintStage;
     const staged = stagedHint(level, game, nextStage);
-    setPreviewSide(null);
+    setPeekSide(null);
     setHint(staged);
     say(staged.text);
     feedback.emit("hint");
@@ -350,7 +354,7 @@ export function GameScreen({
 
   function handleRestart() {
     setGame(createGame(level));
-    setPreviewSide(null);
+    setPeekSide(null);
     setHint(null);
     setStuck(false);
     setPlacedStitchCount(0);
@@ -508,7 +512,7 @@ export function GameScreen({
       {!game.complete && !stuck ? (
         <View style={styles.toolbar}>
           <ToolButton tool="undo" label="Undo" disabled={game.moves.length === 0 || animating} onPress={handleUndo} />
-          <ToolButton tool="preview" label={previewSide ? "Return" : "Preview"} disabled={animating} active={previewSide !== null} onPress={handlePreview} />
+          <ToolButton tool="peek" label={peekControlLabel(game.activeSide, peekSide)} disabled={animating} active={peekSide !== null} onPress={handlePeek} />
           <ToolButton tool="hint" label={hint ? `Hint ${hint.stage}/3` : "Hint"} disabled={animating} active={hint !== null} onPress={handleHint} />
         </View>
       ) : null}
@@ -534,13 +538,12 @@ export function GameScreen({
               <HoopBoard
                 level={level}
                 game={game}
-                visibleSide={visibleSide}
                 size={boardSize}
                 hintNode={hintNode}
                 regionHoles={regionHoles}
                 guidance={guidance}
-                previewing={previewSide !== null}
-                interactionDisabled={animating || previewSide !== null || game.complete}
+                peekSide={peekSide}
+                interactionDisabled={animating || peekSide !== null || game.complete}
                 onNodePress={handleNodePress}
               />
             </Animated.View>

@@ -88,9 +88,11 @@ test("levels marked trap-capable really trap; safe levels never do", () => {
 test("Tricky and Expert levels demand real planning", () => {
   const hard = levels.filter((level) => ["Tricky", "Expert"].includes(level.difficulty));
   // Day & Night: Orbit Bloom, Laced Window, Moonlit Return, Master Sampler (4).
-  // Knot & Bramble: Old Growth, Deep Taproot, Thicket Path, Twin Thorns,
-  // Snared Vine, Knot's End (6).
-  assert.equal(hard.length, 10);
+  // Knot & Bramble: Old Growth, Bark Hollow, Thicket Path, Twin Thorns,
+  // Knot's End (5). Milestone 8.1 replaced Deep Taproot, Bramble Fork, and
+  // Snared Vine's cloned graphs with genuinely new ones that measure into the
+  // Moderate band, so they no longer count here — see docs/COLLECTION-02-DESIGN.md.
+  assert.equal(hard.length, 9);
   for (const level of hard) {
     const { metrics, score } = measureLevel(level);
     assert.ok(metrics.solutionDecisionStates >= 3, `${level.id} should hold several real decisions`);
@@ -110,12 +112,24 @@ test("Levels 7 and 8 are genuinely harder than 6 — the curve no longer dips", 
   assert.equal(measureLevel(levels[7]).metrics.canTrap, true);
 });
 
-test("Level 10 stays the strongest capstone", () => {
-  const scores = levels.map((level) => measureLevel(level).score.total);
+test("Master Sampler stays Day & Night's strongest capstone", () => {
+  const dayAndNight = catalog.collections.find((c) => c.id === "day-and-night")!;
+  const scores = dayAndNight.levels.map((level) => measureLevel(level).score.total);
   assert.equal(Math.max(...scores), scores[9]);
   const capstone = measureLevel(levels[9]).metrics;
   assert.ok(capstone.dangerousDecisions >= 10, "the capstone should be dense with danger");
   assert.ok(capstone.solutionDecisionStates >= 5, "the capstone should hold many meaningful decisions");
+});
+
+test("Knot's End is the catalog's strongest capstone overall", () => {
+  // Milestone 8.1: Knot's End can no longer match Master Sampler's score by
+  // being an exact topology clone of it (that was the bug). A later
+  // collection's capstone legitimately scoring higher than an earlier one's
+  // is expected content growth, not a regression — the invariant that
+  // matters is that the catalog's final level is still its hardest.
+  const scores = levels.map((level) => measureLevel(level).score.total);
+  assert.equal(Math.max(...scores), scores.at(-1));
+  assert.equal(levels.at(-1)!.id, "knots-end-20");
 });
 
 test("guidance never increases again late within each collection's own arc (also enforced per chapter by the pacing validator)", () => {
