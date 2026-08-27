@@ -19,7 +19,9 @@ src/content/          Content hierarchy: catalog, navigation, chapter pacing
 src/progress/         Versioned local progress model and storage boundary
 src/feedback/         Semantic feedback mapping, audio, and haptic services
 src/settings/         Versioned sound/haptic preferences and storage boundary
-src/playtest/         Local playtest events, bounded store, and report engine
+src/playtest/         Local playtest events, bounded store, report engine,
+                      playtest build mode, anonymous test identity, consent,
+                      versioned export bundles, and cohort analysis
 src/theme/            Color, spacing, radius, and type tokens
 ```
 
@@ -135,13 +137,97 @@ reconstructed into inferred attempts and flagged, never treated as precise.
 
 The playtest store collects no names, emails, accounts, location, contacts, advertising identifiers, device fingerprints, or unrelated device data, and performs no network requests. `scripts/scan-analytics.mjs` enforces this in CI.
 
+## Playtest build mode (added Milestone 9)
+
+External testing needs things a consumer build must never show. Rather than
+gating them behind a debug menu, they are gated behind a **build**.
+
+`src/playtest/build.ts` resolves a `BuildChannel` from the environment:
+`playtest` when `EXPO_PUBLIC_PLAYTEST_MODE=true`, otherwise `development` under
+a dev server and `production` elsewhere. `resolveBuildInfo` is a pure function
+of an env snapshot, so channel resolution is unit tested without a device; the
+provider calls it once with the literal `process.env.EXPO_PUBLIC_*` reads that
+Expo inlines at bundle time.
+
+The channel is the *only* thing that separates external evidence from our own
+QA. The cohort analyzer excludes non-`playtest` bundles by that field rather
+than inferring intent from the data (Prompt 9, Goal 18).
+
+In a normal build every playtest path is inert: `PlaytestGate` renders its
+children directly, no anonymous id is minted, no consent is asked, no wrap-up UI
+appears, and the `/playtest/wrapup` route explains it is playtest-only. In a
+playtest build the gate holds the app on the disclosure until the tester
+chooses, so **nothing can be recorded before consent** — the game is not mounted
+yet, so no gameplay event can exist. Declining sets recording off for the whole
+run; `track` and `trackOnce` become no-ops.
+
+Layering: `PlaytestProvider` owns build info, the anonymous install identity,
+the consent decision, questionnaire answers, and bundle export. `PlaytestGate`
+sits inside it and above the router. Gameplay screens are unchanged and still
+call `track` exactly as before.
+
+Two events were added to the existing schema — `app_backgrounded` and
+`app_foregrounded` — because the first-stitch timing gate cannot be measured
+honestly without them: an interruption between opening a level and the first
+stitch would otherwise be counted as thinking time. They are additive; every
+pre-existing version-1 event validates unchanged.
+
+## Playtest bundle, identity, and consent (added Milestone 9)
+
+- `src/playtest/install.ts` — an anonymous, app-scoped, resettable random v4
+  UUID (`pi-…`) minted only in playtest builds. Derived from nothing about the
+  device; it exists solely so one tester's two exports are not two testers.
+- `src/playtest/consent.ts` — the disclosure as data, plus a stored decision
+  carrying `DISCLOSURE_VERSION`; wording changes invalidate prior consent
+  rather than silently reusing it.
+- `src/playtest/questionnaire.ts` — five skippable post-test questions, four
+  free text and one three-option choice. Free text is never auto-graded.
+- `src/playtest/bundle.ts` — the versioned export envelope and a strict,
+  never-throwing parser. Future versions are refused with their own code rather
+  than reinterpreted. Spec: `docs/PLAYTEST-BUNDLE-SPEC.md`.
+- `src/content/version.ts` — `CONTENT_REVISION` (hand-maintained) plus a derived
+  structural fingerprint over the catalog, so an unlabelled content edit still
+  shows up as a different cohort.
+
+## Cohort analysis (added Milestone 9)
+
+Local, offline, and file-based — no server, no database, no analytics SDK. The
+Denisova et al. (2024) finding that *managing playtest data* is a named indie
+pain point is why this layer is deliberately boring.
+
+- `src/playtest/stats.ts` — Wilson and adjusted-Wald intervals, rule of three,
+  geometric mean, an exact binomial CDF, a distribution-free median interval,
+  and the five-state gate verdict. Pure and fully tested.
+- `src/playtest/cohort.ts` — bundle merging with documented duplicate rules,
+  per-tester behaviour derivation, the four locked gate definitions under
+  `METHODOLOGY_VERSION`, platform segmentation, diagnostics, and hedged
+  hypotheses.
+- `src/playtest/cohort-format.ts` — the human-readable report, gates first.
+- `src/playtest/observations.ts` — moderator records (CSV or JSON), parsed
+  per-row so one bad line cannot fail a file.
+- `scripts/playtest-cohort.mjs` — the CLI (`npm run playtest:cohort`).
+- `scripts/playtest-fixtures.mjs` — synthetic bundles for rehearsing the
+  pipeline. Its output is explicitly not evidence.
+
+The gate definitions are documented in `docs/PRODUCT.md` and
+`docs/PLAYTEST-PROTOCOL.md` and were locked before any real data existed;
+changing one requires bumping `METHODOLOGY_VERSION` and reporting both.
+
 ## Builds
 
 `eas.json` defines an `internal` profile (shareable Android APK via
-`distribution: internal`, `buildType: apk`) and a `production` profile (Play
-Store AAB). npm scripts `build:android:internal` and `build:android:production`
-wrap the `eas build` invocations; EAS requires an Expo account and never runs
-without explicit invocation.
+`distribution: internal`, `buildType: apk`), a `playtest` profile (internal
+distribution with `EXPO_PUBLIC_PLAYTEST_MODE=true`, the commit SHA injected as
+`EXPO_PUBLIC_BUILD_ID`, and a cohort label), and a `production` profile (Play
+Store AAB). npm scripts `build:android:internal`, `build:android:playtest`,
+`build:ios:playtest`, and `build:android:production` wrap the `eas build`
+invocations; EAS requires an Expo account and never runs without explicit
+invocation.
+
+Local rehearsal caveat: Metro caches the inlined value of
+`EXPO_PUBLIC_PLAYTEST_MODE`, so a local `expo export` that switches build mode
+needs `--clear` or it will silently reuse the previous flag. EAS builds start
+from a clean environment and are unaffected.
 
 ## Planned engineering gates
 

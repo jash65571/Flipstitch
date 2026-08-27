@@ -44,6 +44,15 @@ jobs:
       - name: Scan for network analytics SDKs
         run: npm run scan:analytics
 
+      # Proves the whole analysis path still runs: generate synthetic bundles
+      # (including a corrupt file, a future version, a duplicate, and a
+      # developer-channel bundle) and analyse them. The numbers it prints are
+      # synthetic and are never evidence about players.
+      - name: Rehearse the playtest cohort pipeline end to end
+        run: |
+          npm run playtest:fixtures -- "$RUNNER_TEMP/rehearsal/bundles"
+          npm run playtest:cohort -- "$RUNNER_TEMP/rehearsal/bundles" --observations "$RUNNER_TEMP/rehearsal/observers.csv"
+
       - name: Bundle Android
         run: EXPO_NO_TELEMETRY=1 npm run export:android
 

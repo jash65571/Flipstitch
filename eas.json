@@ -12,6 +12,22 @@
         "EXPO_NO_TELEMETRY": "1"
       }
     },
+    "playtest": {
+      "distribution": "internal",
+      "channel": "playtest",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
+      },
+      "env": {
+        "EXPO_NO_TELEMETRY": "1",
+        "EXPO_PUBLIC_PLAYTEST_MODE": "true",
+        "EXPO_PUBLIC_BUILD_ID": "$EAS_BUILD_GIT_COMMIT_HASH",
+        "EXPO_PUBLIC_COHORT": "pilot-a"
+      }
+    },
     "production": {
       "distribution": "store",
       "android": {

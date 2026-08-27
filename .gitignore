@@ -17,3 +17,5 @@ expo-env.d.ts
 *.log
 *.tsbuildinfo
 
+# real external playtest bundles and observer records — never committed
+/playtests/

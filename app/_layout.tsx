@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { AccessibilityInfo } from "react-native";
 
 import { FeedbackProvider } from "@/feedback/FeedbackProvider";
+import { PlaytestGate } from "@/playtest/PlaytestGate";
 import { PlaytestProvider } from "@/playtest/PlaytestProvider";
 import { ProgressProvider } from "@/progress/ProgressProvider";
 import { SettingsProvider } from "@/settings/SettingsProvider";
@@ -59,7 +60,11 @@ export default function RootLayout() {
         <FeedbackProvider>
           <ProgressProvider>
             <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "fade", contentStyle: { backgroundColor: colors.linen } }} />
+            {/* Pass-through in the normal build; the consent gate only exists
+                in a playtest build (src/playtest/PlaytestGate.tsx). */}
+            <PlaytestGate>
+              <Stack screenOptions={{ headerShown: false, animation: reduceMotion ? "none" : "fade", contentStyle: { backgroundColor: colors.linen } }} />
+            </PlaytestGate>
           </ProgressProvider>
         </FeedbackProvider>
       </PlaytestProvider>

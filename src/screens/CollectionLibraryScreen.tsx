@@ -8,6 +8,7 @@ import { Wordmark } from "@/components/Wordmark";
 import { catalog } from "@/content/catalog";
 import { getCollectionProgress, getCollectionUnlockState } from "@/content/navigation";
 import type { Collection, CollectionTheme } from "@/content/types";
+import { usePlaytest } from "@/playtest/PlaytestProvider";
 import { useProgress } from "@/progress/ProgressProvider";
 import { getGalleryLayout } from "@/screens/gallery-layout";
 import { colors, palette, radius, space, type } from "@/theme/tokens";
@@ -94,6 +95,7 @@ export function CollectionLibraryScreen() {
   const router = useRouter();
   const { width: viewportWidth, fontScale } = useWindowDimensions();
   const { data, loading } = useProgress();
+  const playtest = usePlaytest();
   const feedback = useFeedback();
   const { contentWidth } = getGalleryLayout(viewportWidth, fontScale);
   const isCompleted = (levelId: string) => Boolean(data.completed[levelId]);
@@ -157,6 +159,23 @@ export function CollectionLibraryScreen() {
             })}
           </View>
         )}
+
+        {/*
+          Playtest builds only. The wrap-up (questionnaire, share, researcher
+          reset) is reachable from the library — never from inside a puzzle —
+          so the gameplay a tester is being measured on stays untouched.
+        */}
+        {playtest.mode.playtestMode ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Finish test"
+            accessibilityHint="A few short questions, then share the test report"
+            onPress={() => router.push("/playtest/wrapup")}
+            style={({ pressed }) => [styles.finishTestButton, pressed && styles.settingsPressed]}
+          >
+            <Text maxFontSizeMultiplier={1.5} style={styles.finishTestText}>Finish test</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -178,6 +197,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.md
   },
   settingsPressed: { opacity: 0.8, transform: [{ scale: 0.97 }] },
+  finishTestButton: {
+    marginTop: space.lg,
+    minHeight: 48,
+    alignSelf: "center",
+    paddingHorizontal: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.cloth,
+    borderWidth: 1,
+    borderColor: colors.linenShadow,
+    borderRadius: radius.pill
+  },
+  finishTestText: { color: colors.inkSoft, fontFamily: type.bodyBold, fontSize: 12 },
   introText: { maxWidth: 560, marginTop: space.md, marginBottom: space.lg, color: colors.inkSoft, fontFamily: type.body, fontSize: 15, lineHeight: 22 },
   loadingState: { minHeight: 240, alignItems: "center", justifyContent: "center", gap: space.sm },
   loadingText: { color: colors.inkSoft, fontFamily: type.bodyMedium, fontSize: 14 },

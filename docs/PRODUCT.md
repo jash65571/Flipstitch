@@ -95,7 +95,7 @@ The puzzle takes most of the screen. The only play controls are Undo, Peek, and 
 - Authoring tools scale: solution counting is memoised over states and is exact
   or explicitly capped, never silently partial.
 
-### Phase 2: content proof (content built and repaired; behavioral proof not yet measured)
+### Phase 2: content proof (content built and repaired; behavioral proof measurable but not yet measured)
 
 - Grow the catalog **by chapter**, not to a fixed level count. The old
   "20-level Day & Night collection" target is retired: it was a prototype
@@ -119,6 +119,41 @@ The puzzle takes most of the screen. The only play controls are Undo, Peek, and 
   measured yet"** rather than assuming content quality implies it. Phase 2
   does not close, and Phase 3 does not start, until a real tester sample
   exists and the Measures gates below are evaluated against it.
+- **Prompt 9 built the way to measure it, and deliberately changed nothing
+  about the experience being measured.** A separate playtest build mode
+  (`EXPO_PUBLIC_PLAYTEST_MODE`) adds consent, an anonymous test identity, a
+  short post-test questionnaire, and a one-tap export; a local cohort analyzer
+  (`npm run playtest:cohort`) turns many testers' exports into the four gates
+  with confidence intervals. Level 1 and the onboarding were **not** touched:
+  adding a tutorial, arrows, or an explanation popup before collecting a
+  baseline would have measured the fix instead of the design. See
+  `docs/PLAYTEST-PROTOCOL.md`, `docs/PLAYTEST-BUNDLE-SPEC.md`, and
+  `docs/RESEARCH-MILESTONE-9.md`.
+- **Still true after Prompt 9: external behavioural sample not measured yet.**
+  Zero external testers have played. The infrastructure is complete and
+  exercised; the evidence is absent (`docs/MILESTONE-9-QA.md`).
+
+### Phase 2 exit gate (set in Prompt 9)
+
+Phase 2 closes only when **all five** hold:
+
+1. External tester data exists — real humans who did not build FlipStitch,
+   playing a playtest build, with exported bundles.
+2. The cohort is large enough for the locked method to produce verdicts at all
+   (at minimum ten eligible testers per gate; forty is the target).
+3. The four gates are calculated with the locked methodology above, unchanged
+   from before the data arrived.
+4. Critical qualitative confusion found in the pilot has been addressed.
+5. Mobile-device behaviour has at least some real-device or emulator evidence —
+   the primary product is Android and iOS, and a desktop browser run is not a
+   substitute for touch.
+
+If any gate is missed, or the sample is too small to judge it, **Phase 2 stays
+open** and the next milestone is a focused correction milestone: fix what the
+data showed, then re-run a fresh cohort against the new build. Retention work
+does not begin on a "promising" verdict.
+
+If the gates are credibly met, Phase 3 may begin.
 
 ### Phase 3: retention proof
 
@@ -143,6 +178,56 @@ The prototype gate is behavioral, not opinion-based:
 - Median time to the first valid stitch stays under 10 seconds.
 - Fewer than 20% exit during the first three levels.
 - At least 60% choose to start level four.
+
+**Status: none of the four has been measured.** No external human has played
+FlipStitch. See `docs/MILESTONE-9-QA.md`.
+
+### How each gate is computed (locked, Prompt 9)
+
+The four thresholds above are unchanged and will not be moved to suit results.
+What Prompt 9 added is an exact definition for each, written and tested *before*
+any tester data existed, so that a denominator cannot be quietly redefined
+afterwards. The definitions live in `src/playtest/cohort.ts` under
+`METHODOLOGY_VERSION`, are spelled out in `docs/PLAYTEST-PROTOCOL.md`, and are
+printed at the bottom of every cohort report.
+
+A **tester** is one anonymous playtest-install id from a bundle whose build
+channel is `playtest`; our own development and production builds are excluded by
+build metadata, never by guesswork. A tester is **eligible** once they have
+opened level one.
+
+1. **Level 1 unaided completion.** Denominator: eligible testers with a
+   moderator observation recording spoken help as a definite yes or no.
+   Numerator: help = no *and* level one completed. Helped testers stay in the
+   denominator. Telemetry cannot see a person talking, so an unobserved tester
+   cannot contribute to this gate at all; their raw completion is reported
+   separately and labelled *not gate evidence*.
+2. **Time to first valid stitch.** One measurement per eligible tester, from
+   their *first* level-one attempt: first valid stitch minus level opened, minus
+   any time the app spent backgrounded inside that window. The gate stays a
+   **median**, as written above; a geometric mean is reported alongside it when
+   n < 25 as context only, because task times are skewed.
+3. **Exit during the first three levels.** Denominator: eligible testers.
+   Numerator: those who did not complete all of levels one, two and three. The
+   alternative reading — "never opened level four" — was rejected because it is
+   the exact complement of gate four and would make gate four redundant.
+4. **Chose to start level four.** Denominator: eligible testers who completed
+   level three, i.e. those actually offered it. Numerator: those whose first
+   level-four open came after their own level-three completion, through normal
+   progression. An open that precedes the unlock is an anomaly, not a choice.
+
+### Uncertainty is reported, never rounded away
+
+Every proportion is reported as a count, a percentage, and a 95% Wilson interval
+(with an adjusted-Wald cross-check), and the median carries a distribution-free
+interval. A gate resolves to one of five states — *insufficient sample*,
+*promising*, *concerning*, *not met*, or *met with meaningful evidence* — and
+only the last means the whole interval sits on the passing side. Below ten
+testers no verdict is offered at all. Forty testers is the target, which is
+roughly a 15% margin of error at 95% confidence.
+
+"Four of five passed, therefore 80% of players will pass" is not a claim this
+project will make.
 
 Feel gates for the playtest milestone:
 

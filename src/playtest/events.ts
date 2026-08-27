@@ -8,6 +8,15 @@
 
 export const PLAYTEST_SCHEMA_VERSION = 1;
 
+/**
+ * Milestone 9 added `app_backgrounded` / `app_foregrounded`. They are additive:
+ * every version-one event still validates unchanged, and readers that predate
+ * them simply never see them. The pair exists because the "time to first valid
+ * stitch" gate cannot be measured honestly without it — a tester who is
+ * interrupted mid-level would otherwise have the interruption counted as
+ * thinking time (see docs/PLAYTEST-BUNDLE-SPEC.md, "first-stitch time").
+ */
+
 export const PLAYTEST_STORAGE_KEY = "flipstitch.playtest.v1";
 
 /** Documented bound: keep at most this many events, dropping the oldest first. */
@@ -15,6 +24,8 @@ export const MAX_PLAYTEST_EVENTS = 5000;
 
 export type PlaytestEventName =
   | "app_session_started"
+  | "app_backgrounded"
+  | "app_foregrounded"
   | "level_opened"
   | "first_valid_stitch"
   | "valid_stitch"
@@ -31,6 +42,8 @@ export type PlaytestEventName =
 
 export const PLAYTEST_EVENT_NAMES: readonly PlaytestEventName[] = [
   "app_session_started",
+  "app_backgrounded",
+  "app_foregrounded",
   "level_opened",
   "first_valid_stitch",
   "valid_stitch",

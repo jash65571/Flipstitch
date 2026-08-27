@@ -125,28 +125,30 @@ export function SettingsScreen() {
     setViewing("json");
   }
 
-  async function shareText(title: string, text: string) {
-    if (typeof Share !== "undefined" && typeof Share.share === "function") {
-      try {
-        await Share.share({ title, message: text });
-        return;
-      } catch {
-        // Fall through to the inline copy panel.
-      }
-    }
+  /**
+   * Opens the native share sheet and, either way, leaves the text on screen to
+   * copy. The share promise is not awaited before the panel is shown: on some
+   * platforms it never settles (a browser exposing `navigator.share` with no
+   * OS sheet behind it), and an export path that depends on a promise
+   * resolving is an export path that can silently do nothing.
+   */
+  function shareText(title: string, text: string) {
     setReportText(text);
     setRawJson(text);
-    setViewing(text.startsWith("{") ? "json" : "report");
+    setViewing(text.startsWith("[") || text.startsWith("{") ? "json" : "report");
+    if (typeof Share !== "undefined" && typeof Share.share === "function") {
+      void Promise.resolve(Share.share({ title, message: text })).catch(() => undefined);
+    }
   }
 
   async function exportReport() {
     const data = await loadPlaytestData();
-    await shareText("FlipStitch playtest report", data.report);
+    shareText("FlipStitch playtest report", data.report);
   }
 
   async function exportJson() {
     const data = await loadPlaytestData();
-    await shareText("FlipStitch playtest events", data.json);
+    shareText("FlipStitch playtest events", data.json);
   }
 
   async function clearPlaytest() {
@@ -274,6 +276,43 @@ export function SettingsScreen() {
           />
         </View>
 
+        {/*
+          Playtest builds only. The normal consumer build never shows build
+          identity, an anonymous test id, or the wrap-up flow.
+        */}
+        {playtest.mode.playtestMode ? (
+          <>
+            {sectionHeading("Playtest build", "chapter")}
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <View style={styles.rowCopy}>
+                  <Text maxFontSizeMultiplier={1.6} style={styles.rowTitle}>This is a playtest build</Text>
+                  <Text maxFontSizeMultiplier={1.7} style={styles.rowDetail}>
+                    Test id {playtest.installId?.slice(0, 14) ?? "pending"}… · build {playtest.mode.buildId} · content{" "}
+                    {playtest.contentRevision} ({playtest.contentFingerprint})
+                    {playtest.mode.cohortId ? ` · cohort ${playtest.mode.cohortId}` : ""}
+                  </Text>
+                  <Text maxFontSizeMultiplier={1.7} style={styles.rowDetail}>
+                    The test id is a random number made on this device. It is not an account and says nothing about the
+                    device. Recording is {playtest.consent === "granted" ? "on" : "off"}.
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.buttonGrid}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Finish test"
+                  accessibilityHint="A few short questions, then share the test report"
+                  onPress={() => router.push("/playtest/wrapup")}
+                  style={({ pressed }) => [styles.actionButton, pressed && styles.actionPressed]}
+                >
+                  <Text maxFontSizeMultiplier={1.5} style={styles.actionButtonText}>Finish test</Text>
+                </Pressable>
+              </View>
+            </View>
+          </>
+        ) : null}
+
         {sectionHeading("Progress", "completed")}
         <View style={styles.card}>
           <View style={styles.row}>
@@ -292,7 +331,7 @@ export function SettingsScreen() {
 
         {sectionHeading("About", "needle")}
         <View style={styles.card}>
-          <Text maxFontSizeMultiplier={1.7} style={styles.aboutLine}>FlipStitch 0.1.0 · feel and playtest proof</Text>
+          <Text maxFontSizeMultiplier={1.7} style={styles.aboutLine}>FlipStitch 0.1.0 · external playtest infrastructure</Text>
           <Text maxFontSizeMultiplier={1.7} style={styles.aboutDetail}>
             Typefaces Fraunces and Atkinson Hyperlegible Next are bundled under the SIL Open Font License 1.1. All sound
             effects are original, generated in-repo, and owned by the project. See assets/licenses and assets/sounds/README.md.
