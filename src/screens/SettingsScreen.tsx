@@ -5,9 +5,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useFeedback } from "@/feedback/FeedbackProvider";
 import { Icon, type IconName } from "@/components/Icon";
-import { levels } from "@/content/catalog";
+import { catalog, levels } from "@/content/catalog";
 import { usePlaytest } from "@/playtest/PlaytestProvider";
-import { buildPlaytestReport, formatReadableReport } from "@/playtest/report";
+import { buildContentReport, buildPlaytestReport, formatReadableReport } from "@/playtest/report";
 import { useProgress } from "@/progress/ProgressProvider";
 import {
   confirmExpired,
@@ -107,7 +107,8 @@ export function SettingsScreen() {
   async function loadPlaytestData(): Promise<{ report: string; json: string }> {
     const events = await playtest.loadEvents();
     const report = buildPlaytestReport(events, levels.map((level) => level.id));
-    return { report: formatReadableReport(report, levels.map((level) => level.id)), json: JSON.stringify(events, null, 2) };
+    const content = buildContentReport(events, catalog);
+    return { report: formatReadableReport(report, levels.map((level) => level.id), content), json: JSON.stringify(events, null, 2) };
   }
 
   async function showReport() {

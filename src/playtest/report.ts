@@ -14,6 +14,7 @@
  */
 
 import type { PlaytestEvent } from "./events.ts";
+import type { Catalog } from "../content/types.ts";
 
 export const MIN_SESSIONS_FOR_CONFIDENCE = 5;
 export const MIN_ATTEMPTS_FOR_CONFIDENCE = 5;
@@ -331,8 +332,70 @@ export function buildPlaytestReport(events: readonly PlaytestEvent[], levelIds: 
   };
 }
 
+export type ContentUnitReport = {
+  id: string;
+  title: string;
+  totalLevels: number;
+  levelsReached: number;
+  levelsCompleted: number;
+  finished: boolean;
+  /** thread_trapped events across every level in this unit. */
+  trapEvents: number;
+};
+
+export type ContentReport = {
+  collections: ContentUnitReport[];
+  chapters: ContentUnitReport[];
+};
+
+/**
+ * Collection- and chapter-scale rollups, derived entirely from the same
+ * local events `buildPlaytestReport` already reads plus the content
+ * hierarchy — no new events are recorded for this. "Reached" means at least
+ * one attempt exists for a level in that unit; "trap frequency" reuses the
+ * existing `thread_trapped` event, one per level per stranded state a player
+ * actually hits, so it already reflects real play rather than the analyzer's
+ * theoretical dead-end count.
+ */
+export function buildContentReport(events: readonly PlaytestEvent[], catalog: Catalog): ContentReport {
+  const attemptedLevels = new Set<string>();
+  const completedLevels = new Set<string>();
+  const trapCountByLevel = new Map<string, number>();
+
+  for (const event of events) {
+    if (event.levelId === undefined) continue;
+    if (event.name === "level_opened") attemptedLevels.add(event.levelId);
+    if (event.name === "level_completed") completedLevels.add(event.levelId);
+    if (event.name === "thread_trapped") {
+      trapCountByLevel.set(event.levelId, (trapCountByLevel.get(event.levelId) ?? 0) + 1);
+    }
+  }
+
+  function summarize(id: string, title: string, levelIds: readonly string[]): ContentUnitReport {
+    const levelsReached = levelIds.filter((levelId) => attemptedLevels.has(levelId)).length;
+    const levelsCompleted = levelIds.filter((levelId) => completedLevels.has(levelId)).length;
+    const trapEvents = levelIds.reduce((sum, levelId) => sum + (trapCountByLevel.get(levelId) ?? 0), 0);
+    return {
+      id,
+      title,
+      totalLevels: levelIds.length,
+      levelsReached,
+      levelsCompleted,
+      finished: levelIds.length > 0 && levelsCompleted === levelIds.length,
+      trapEvents
+    };
+  }
+
+  return {
+    collections: catalog.collections.map((collection) => summarize(collection.id, collection.title, collection.levelIds)),
+    chapters: catalog.collections.flatMap((collection) =>
+      collection.chapters.map((chapter) => summarize(chapter.id, chapter.title, chapter.levelIds))
+    )
+  };
+}
+
 /** Human-readable rendering of the report for the Settings export. */
-export function formatReadableReport(report: PlaytestReport, levelIds: readonly string[]): string {
+export function formatReadableReport(report: PlaytestReport, levelIds: readonly string[], content?: ContentReport): string {
   const lines: string[] = [];
   lines.push("FlipStitch local playtest report");
   lines.push(`Generated ${report.generatedAt}`);
@@ -376,6 +439,22 @@ export function formatReadableReport(report: PlaytestReport, levelIds: readonly 
   lines.push(`  Hint: ${report.hintUsage.total} / ${report.hintUsage.perSession?.toFixed(2) ?? "n/a"}`);
   lines.push(`  Preview: ${report.previewUsage.total} / ${report.previewUsage.perSession?.toFixed(2) ?? "n/a"}`);
   lines.push(`  Restart: ${report.restartUsage.total} / ${report.restartUsage.perSession?.toFixed(2) ?? "n/a"}`);
+
+  if (content) {
+    lines.push("");
+    lines.push("— Content progress (collections & chapters) —");
+    for (const unit of content.collections) {
+      lines.push(
+        `  ${unit.title}: reached ${unit.levelsReached}/${unit.totalLevels}, completed ${unit.levelsCompleted}/${unit.totalLevels}${unit.finished ? " (finished)" : ""}, ${unit.trapEvents} trap event(s)`
+      );
+    }
+    lines.push("  By chapter:");
+    for (const unit of content.chapters) {
+      lines.push(
+        `    ${unit.title}: reached ${unit.levelsReached}/${unit.totalLevels}, completed ${unit.levelsCompleted}/${unit.totalLevels}${unit.finished ? " (finished)" : ""}, ${unit.trapEvents} trap event(s)`
+      );
+    }
+  }
 
   if (report.warnings.length > 0) {
     lines.push("");

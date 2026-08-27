@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { catalog } from "../content/catalog.ts";
 import { PLAYTEST_SCHEMA_VERSION, type PlaytestEvent } from "./events.ts";
 import {
+  buildContentReport,
   buildPlaytestReport,
   formatReadableReport,
   MIN_ATTEMPTS_FOR_CONFIDENCE,
@@ -207,4 +209,64 @@ test("legacy small-sample warnings use attempt counts", () => {
   const report = buildPlaytestReport(events, LEVEL_IDS);
   assert.ok(report.warnings.some((w) => w.includes(`Level l2 has only 1 attempt(s)`)));
   assert.ok(report.warnings.some((w) => w.includes(`Fewer than ${MIN_ATTEMPTS_FOR_CONFIDENCE}`) === false));
+});
+
+// ---- Content report: collection/chapter rollups from local events only ----
+
+test("an untouched catalog reports zero reached and zero completed everywhere", () => {
+  const content = buildContentReport([], catalog);
+  assert.equal(content.collections.length, catalog.collections.length);
+  for (const unit of content.collections) {
+    assert.equal(unit.levelsReached, 0);
+    assert.equal(unit.levelsCompleted, 0);
+    assert.equal(unit.finished, false);
+    assert.equal(unit.trapEvents, 0);
+  }
+});
+
+test("reaching and completing levels rolls up to the right collection and chapter, not others", () => {
+  const dayAndNight = catalog.collections[0];
+  const firstLevelId = dayAndNight.levelIds[0];
+  const events: PlaytestEvent[] = [
+    makeEvent({ name: "level_opened", levelId: firstLevelId }),
+    makeEvent({ name: "thread_trapped", levelId: firstLevelId }),
+    makeEvent({ name: "thread_trapped", levelId: firstLevelId }),
+    makeEvent({ name: "level_completed", levelId: firstLevelId })
+  ];
+  const content = buildContentReport(events, catalog);
+  const dayAndNightReport = content.collections.find((unit) => unit.id === dayAndNight.id)!;
+  assert.equal(dayAndNightReport.levelsReached, 1);
+  assert.equal(dayAndNightReport.levelsCompleted, 1);
+  assert.equal(dayAndNightReport.trapEvents, 2);
+  assert.equal(dayAndNightReport.finished, false);
+
+  const otherCollections = content.collections.filter((unit) => unit.id !== dayAndNight.id);
+  for (const unit of otherCollections) {
+    assert.equal(unit.levelsReached, 0, `${unit.id} must not see Day & Night's events`);
+  }
+
+  const firstChapter = dayAndNight.chapters[0];
+  const chapterReport = content.chapters.find((unit) => unit.id === firstChapter.id)!;
+  assert.equal(chapterReport.levelsCompleted, 1);
+});
+
+test("a collection reports finished only once every one of its levels is completed", () => {
+  const dayAndNight = catalog.collections[0];
+  const events: PlaytestEvent[] = dayAndNight.levelIds.map((levelId) => makeEvent({ name: "level_completed", levelId }));
+  const content = buildContentReport(events, catalog);
+  const dayAndNightReport = content.collections.find((unit) => unit.id === dayAndNight.id)!;
+  assert.equal(dayAndNightReport.finished, true);
+  const knotAndBramble = content.collections.find((unit) => unit.id === catalog.collections[1].id)!;
+  assert.equal(knotAndBramble.finished, false);
+});
+
+test("the readable report includes content progress only when a ContentReport is supplied", () => {
+  const report = buildPlaytestReport([], LEVEL_IDS);
+  const withoutContent = formatReadableReport(report, LEVEL_IDS);
+  assert.ok(!withoutContent.includes("Content progress"));
+
+  const content = buildContentReport([], catalog);
+  const withContent = formatReadableReport(report, LEVEL_IDS, content);
+  assert.ok(withContent.includes("Content progress"));
+  assert.ok(withContent.includes(catalog.collections[0].title));
 });
