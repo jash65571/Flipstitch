@@ -63,7 +63,12 @@ export type ConceptId =
   | "delayed-trap"
   | "linked-return"
   | "ordering-discipline"
-  | "multi-region";
+  | "multi-region"
+  // Tier 2 (docs/PUZZLE-CURRICULUM.md) — introduced in Collection 02.
+  | "nested-obligation"
+  | "asymmetric-hub"
+  | "interacting-runners"
+  | "converging-openings";
 
 /** One authored level in its progression position. */
 export type ChapterEntry = {

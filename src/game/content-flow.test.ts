@@ -5,7 +5,7 @@ import { createGame, nextHint, playMove, undoMove } from "./engine.ts";
 import { levels } from "../content/catalog.ts";
 import { emptyProgress, isLevelUnlocked, readProgress, recordCompletion } from "../progress/model.ts";
 
-test("the full ten-level collection unlocks, persists, and completes in order", () => {
+test("the full twenty-level catalog unlocks, persists, and completes in order", () => {
   let savedProgress = emptyProgress();
 
   for (const [index, level] of levels.entries()) {
@@ -26,8 +26,9 @@ test("the full ten-level collection unlocks, persists, and completes in order", 
     }
   }
 
-  assert.equal(Object.keys(savedProgress.completed).length, 10);
-  assert.equal(savedProgress.completed[levels[9].id].bestMoves, levels[9].authoredSolution.length - 1);
+  assert.equal(Object.keys(savedProgress.completed).length, levels.length);
+  const last = levels[levels.length - 1];
+  assert.equal(savedProgress.completed[last.id].bestMoves, last.authoredSolution.length - 1);
 });
 
 test("a hard-level dead end can be undone and the solver hint recovers", () => {

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { measureLevel } from "./analyzer.ts";
 import { availableNodes, createGame, guidanceFor, nextHint, playMove, stagedHint } from "./engine.ts";
-import { levels } from "../content/catalog.ts";
+import { catalog, levels } from "../content/catalog.ts";
 import type { GameState, Level } from "./types.ts";
 
 /**
@@ -33,7 +33,7 @@ function play(level: Level, path: string[]): GameState {
 }
 
 test("the measured curve for Collection 01 is exactly as authored", () => {
-  const scores = levels.map((level) => measureLevel(level).score.total);
+  const scores = catalog.collections[0].levels.map((level) => measureLevel(level).score.total);
   assert.deepEqual(scores, EXPECTED_SCORES, "the authored curve changed; update this test only with intent");
 });
 
@@ -41,8 +41,9 @@ test("Collection 01 in particular still rises the whole way — a property of th
   // Day & Night is one continuous ten-level learning arc, so it happens to be
   // monotonic. Asserting it here documents *this collection's* shape. The rule
   // that governs future content is in src/content/pacing.ts, and it permits a
-  // paced drop; see pacing.test.ts.
-  const scores = levels.map((level) => measureLevel(level).score.total);
+  // paced drop; see pacing.test.ts. Collection 02 (Knot & Bramble) uses that
+  // room deliberately — see the pacingNote on its Chapter Two opener.
+  const scores = catalog.collections[0].levels.map((level) => measureLevel(level).score.total);
   for (let index = 1; index < scores.length; index += 1) {
     assert.ok(scores[index] > scores[index - 1], `level ${index + 1} is easier than level ${index}`);
   }
@@ -86,7 +87,10 @@ test("levels marked trap-capable really trap; safe levels never do", () => {
 
 test("Tricky and Expert levels demand real planning", () => {
   const hard = levels.filter((level) => ["Tricky", "Expert"].includes(level.difficulty));
-  assert.equal(hard.length, 4); // 7, 8, 9, 10
+  // Day & Night: Orbit Bloom, Laced Window, Moonlit Return, Master Sampler (4).
+  // Knot & Bramble: Old Growth, Deep Taproot, Thicket Path, Twin Thorns,
+  // Snared Vine, Knot's End (6).
+  assert.equal(hard.length, 10);
   for (const level of hard) {
     const { metrics, score } = measureLevel(level);
     assert.ok(metrics.solutionDecisionStates >= 3, `${level.id} should hold several real decisions`);
@@ -114,17 +118,19 @@ test("Level 10 stays the strongest capstone", () => {
   assert.ok(capstone.solutionDecisionStates >= 5, "the capstone should hold many meaningful decisions");
 });
 
-test("guidance never increases again late in the collection (also enforced per chapter by the pacing validator)", () => {
-  const guidance = levels.map((level) => guidanceFor(level));
+test("guidance never increases again late within each collection's own arc (also enforced per chapter by the pacing validator)", () => {
   const strength = { full: 3, reduced: 2, minimal: 1 } as const;
-  for (let index = 1; index < guidance.length; index += 1) {
-    assert.ok(
-      strength[guidance[index]] <= strength[guidance[index - 1]],
-      `guidance must not strengthen again at level ${index + 1}`
-    );
+  for (const collection of catalog.collections) {
+    const guidance = collection.levels.map((level) => guidanceFor(level));
+    for (let index = 1; index < guidance.length; index += 1) {
+      assert.ok(
+        strength[guidance[index]] <= strength[guidance[index - 1]],
+        `${collection.id}: guidance must not strengthen again at level ${index + 1}`
+      );
+    }
+    assert.equal(guidance[0], "full", `${collection.id} should open at full guidance`);
+    assert.equal(guidance[guidance.length - 1], "minimal", `${collection.id} should close at minimal guidance`);
   }
-  assert.equal(guidance[0], "full");
-  assert.equal(guidance[guidance.length - 1], "minimal");
 });
 
 test("hint targets stay legal everywhere: every stage-3 hole is a real, legal move", () => {

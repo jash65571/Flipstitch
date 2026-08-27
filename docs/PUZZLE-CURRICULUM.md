@@ -101,10 +101,17 @@ bridges. **Measures as:** high `reachableStates` with moderate `avgBranching`.
 
 ---
 
-## Tier 2 — Designed, not yet authored
+## Tier 2 — Collection 02 (Knot & Bramble)
 
-These are the next collection's material. Each is a graph structure, each is
-measurable, and each is derivable from the one rule.
+`nested-obligation`, `asymmetric-hub`, `interacting-runners`, and
+`converging-openings` are shipped in Collection 02. See
+`docs/COLLECTION-02-DESIGN.md` for which levels teach and exercise each one.
+The remaining Tier 2 entries below stay designed-but-unauthored; Prompt 8
+deliberately does not use `long-distance-dependency` (see that entry) and
+found `false-symmetry`, `two-stage-return`, `irreversible-looking-route`, and
+the front-heavy-setup mirror were not needed to teach nested obligation,
+asymmetric hubs, interacting runners, or converging openings cleanly — they
+remain candidate material for a future collection rather than forced in here.
 
 ### `nested-obligation`
 A return loop whose own return passes through a second loop that must itself be
@@ -114,6 +121,8 @@ so the player must recognise a dependency *order*, not just a set.
 C. **Measures as:** `maxConsequenceDepth` rising with a low `maxBranching` —
 depth from nesting, not from width. **Fair because:** the nesting is drawn; the
 lines are all visible from the first frame.
+**Shipped in:** Root Knot, Twin Roots, Old Growth, Deep Taproot (Collection 02
+Chapter 1) — see the design doc for level order.
 
 ### `asymmetric-hub`
 A hub whose front and back degrees differ (say four front edges, two back). The
@@ -123,6 +132,7 @@ junction on one flip and a bottleneck on the next.
 visible as a skewed `frontDecisionShare` for that region.
 **Teaches:** that a hole's identity is side-dependent — the deepest consequence
 of the core rule.
+**Shipped in:** Bark Hollow, Old Growth, Deep Taproot (Collection 02 Chapter 1).
 
 ### `interacting-runners`
 Two runners from the same hub. Each is safe *if* it is the last thing done in
@@ -131,6 +141,16 @@ constraint the other does not.
 **Measures as:** `dangerousDecisions` high with `solutionCount` small.
 **Fair because:** symmetry invites the player to treat them identically, and the
 board shows why one differs.
+**Shipped in:** Twin Thorns, Snared Vine, Knot's End (Collection 02 Chapter 2).
+
+### `converging-openings`
+Several genuinely safe opening moves that all funnel into one narrow middle
+game. The opening is free; the middle is not.
+**Measures as:** high `maxBranching` early, collapsing to a low
+`avgBranching` at mid-depth. **Teaches:** that early freedom is not evidence of
+a forgiving puzzle — the reverse of the habit levels 1-4 build.
+**Shipped in:** Bramble Fork, Thicket Path, Snared Vine, Knot's End
+(Collection 02 Chapter 2).
 
 ### `false-symmetry`
 A pattern that *looks* mirror-symmetric but whose two halves differ by one edge
@@ -171,13 +191,6 @@ impose the real constraint — and its inverse.
 **Chapter-scale rule:** the `ONE_SIDED_CHAPTER` warning exists so this stays a
 *level* device. A whole chapter that leans one way is a design smell; a single
 level that does is a lesson.
-
-### `converging-openings`
-Several genuinely safe opening moves that all funnel into one narrow middle
-game. The opening is free; the middle is not.
-**Measures as:** high `maxBranching` early, collapsing to a low
-`avgBranching` at mid-depth. **Teaches:** that early freedom is not evidence of
-a forgiving puzzle — the reverse of the habit levels 1-4 build.
 
 ---
 

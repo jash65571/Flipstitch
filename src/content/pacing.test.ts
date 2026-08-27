@@ -14,7 +14,16 @@ import type { Chapter, Collection } from "./types.ts";
  * warning shows up as a test failure and gets looked at instead of scrolling
  * past in CI output.
  */
-const EXPECTED_WARNINGS: string[] = [];
+const EXPECTED_WARNINGS: string[] = [
+  // Knot & Bramble Chapter One clusters decisions on the back side: every
+  // level's decision hub is reached via a front-side entry, so the branch
+  // choice itself always lands on the back. Reviewed for Prompt 8 (see
+  // docs/MILESTONE-8-QA.md) and judged an honest property of teaching
+  // nested-obligation and asymmetric-hub through a shared-hub shape, not a
+  // bug — Chapter Two's converging-openings/interacting-runners levels
+  // balance the collection's overall side split back out.
+  "ONE_SIDED_CHAPTER @ knot-and-bramble-ch01"
+];
 
 test("the shipped catalog violates no pacing invariant", () => {
   const report = validateCatalogPacing();

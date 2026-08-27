@@ -5,8 +5,10 @@ import { validateLevel } from "../game/solver.ts";
 import { buildCatalog, catalog, getChapter, getCollection, getLevel, getLevelIndex, levels, levelOne } from "./catalog.ts";
 import type { CollectionSource } from "./types.ts";
 
-/** The ten shipped levels, in the order saved progress depends on. */
-const SHIPPED_ORDER = [
+/** Collection 01's ten levels, in the order saved progress depends on. Never
+ *  reorder or rename these — existing players' progress keys on this exact
+ *  sequence (see src/progress/model.test.ts for the upgrade tests). */
+const DAY_AND_NIGHT_ORDER = [
   "first-thread-01",
   "kite-tail-02",
   "twin-petals-03",
@@ -18,6 +20,22 @@ const SHIPPED_ORDER = [
   "moonlit-return-09",
   "master-sampler-10"
 ];
+
+/** Collection 02's ten levels, appended after Collection 01 in play order. */
+const KNOT_AND_BRAMBLE_ORDER = [
+  "root-knot-11",
+  "twin-roots-12",
+  "bark-hollow-13",
+  "deep-taproot-14",
+  "old-growth-15",
+  "bramble-fork-16",
+  "thicket-path-17",
+  "twin-thorns-18",
+  "snared-vine-19",
+  "knots-end-20"
+];
+
+const SHIPPED_ORDER = [...DAY_AND_NIGHT_ORDER, ...KNOT_AND_BRAMBLE_ORDER];
 
 test("collection ids are unique", () => {
   const ids = catalog.collections.map((collection) => collection.id);
@@ -64,12 +82,14 @@ test("catalog assembly is deterministic", () => {
   assert.deepEqual(first.levelIds, second.levelIds);
 });
 
-test("the ten shipped levels keep their ids and their order", () => {
+test("the twenty shipped levels keep their ids and their order", () => {
   // Saved progress and linear unlocking both key on this exact sequence. A
   // change here silently rewrites what existing players have unlocked.
   assert.deepEqual([...catalog.levelIds], SHIPPED_ORDER);
   assert.equal(levelOne.id, "first-thread-01");
   assert.equal(getLevelIndex("master-sampler-10"), 9);
+  assert.equal(getLevelIndex("root-knot-11"), 10);
+  assert.equal(getLevelIndex("knots-end-20"), 19);
 });
 
 test("every production level still passes full solver validation", () => {

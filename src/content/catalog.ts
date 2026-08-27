@@ -15,10 +15,11 @@
  */
 import type { Level } from "../game/types.ts";
 import { dayAndNight } from "./collections/day-and-night/collection.ts";
+import { knotAndBramble } from "./collections/knot-and-bramble/collection.ts";
 import type { Catalog, Chapter, Collection, CollectionSource } from "./types.ts";
 
 /** Every authored collection, in no particular order — `order` decides. */
-export const COLLECTION_SOURCES: readonly CollectionSource[] = [dayAndNight];
+export const COLLECTION_SOURCES: readonly CollectionSource[] = [dayAndNight, knotAndBramble];
 
 function fail(message: string): never {
   throw new Error(`FlipStitch catalog is invalid: ${message}`);

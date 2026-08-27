@@ -17,8 +17,8 @@ function copyLevel(overrides: Partial<Level> = {}): Level {
   };
 }
 
-test("all ten production levels pass deterministic validation", () => {
-  assert.equal(levels.length, 10);
+test("all twenty production levels pass deterministic validation", () => {
+  assert.equal(levels.length, 20);
   for (const level of levels) {
     const result = validateLevel(level);
     assert.equal(result.valid, true, `${level.id}: ${result.issues.map((issue) => issue.message).join("; ")}`);

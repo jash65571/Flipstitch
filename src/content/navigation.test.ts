@@ -61,12 +61,14 @@ test("boundaries at the very start and very end of the catalog are honest", () =
   assert.equal(last.isCollectionLast, true);
 });
 
-test("level numbering is continuous across chapters", () => {
+test("level numbering is continuous across chapters and collections", () => {
   const numbers = levels.map((level) => getLevelContext(level.id)!.levelNumber);
-  assert.deepEqual(numbers, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(numbers, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
   // Position inside the chapter restarts; the player-facing number does not.
   assert.equal(getLevelContext("echo-stairs-06")!.chapterPosition, 1);
   assert.equal(getLevelContext("echo-stairs-06")!.levelNumber, 6);
+  assert.equal(getLevelContext("root-knot-11")!.chapterPosition, 1);
+  assert.equal(getLevelContext("root-knot-11")!.levelNumber, 11);
 });
 
 test("a level knows its chapter and its collection", () => {
@@ -127,6 +129,16 @@ test("resume on the final level of the catalog stays there rather than falling o
   for (const level of levels) {
     progress = recordCompletion(progress, level.id, 6);
   }
-  assert.equal(resumeLevelId(progress, levels), "master-sampler-10");
-  assert.equal(getNextLevelId("master-sampler-10"), null);
+  assert.equal(resumeLevelId(progress, levels), "knots-end-20");
+  assert.equal(getNextLevelId("knots-end-20"), null);
+});
+
+test("resume lands on Collection 02's first level once Collection 01 is finished", () => {
+  let progress = emptyProgress();
+  for (const levelId of catalog.collections[0].levelIds) {
+    progress = recordCompletion(progress, levelId, 6);
+  }
+  const resumeId = resumeLevelId(progress, levels);
+  assert.equal(resumeId, "root-knot-11");
+  assert.equal(getLevelContext(resumeId)!.collection.id, "knot-and-bramble");
 });
