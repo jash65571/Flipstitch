@@ -152,6 +152,35 @@ from the level route, which reads them off the `LevelContext`.
 There is no hard-coded content copy left in any screen. Adding a chapter changes
 the gallery without changing the gallery's code.
 
+## Prompt 8: the second collection, and what it proved
+
+Collection 02 (Knot & Bramble, `src/content/collections/knot-and-bramble/`)
+is the architecture's first real second occupant. Registering it was one
+line in `COLLECTION_SOURCES` (`src/content/catalog.ts`). Two things that
+were *not* proven by Collection 01 alone turned out to already work
+correctly:
+
+- **Unlocking and resume.** `src/progress/model.ts` computes both from flat
+  catalog order, with no notion of "collection" at all. Appending ten levels
+  after Day & Night's ten was enough for Collection 02 to unlock exactly
+  when Day & Night finishes, and for resume to land on `root-knot-11`
+  exactly once it does — no migration, no new code path, proven by the new
+  boundary tests in `src/progress/model.test.ts`.
+- **`LevelSelectScreen` needed a real fix, not a coincidence.** It read
+  `catalog.collections[0]` directly — harmless while one collection existed,
+  wrong the moment a second one shipped. It now takes `collectionId` as a
+  prop; a new `CollectionLibraryScreen` and a `getCollectionUnlockState`
+  helper (`src/content/navigation.ts`) supply the multi-collection UI that
+  screen never needed to have on its own. See `docs/ARCHITECTURE.md`'s
+  routing section for the resulting route table.
+
+One thing needed to grow: `ConceptId` (`src/content/types.ts`) gained four
+Tier 2 members (`nested-obligation`, `asymmetric-hub`,
+`interacting-runners`, `converging-openings`) — the curriculum vocabulary is
+part of the content schema, and a genuinely new concept has to be added
+there before any level can be tagged with it. See
+`docs/PUZZLE-CURRICULUM.md`.
+
 ## Related documents
 
 - `docs/PROGRESSION-PACING.md` — the pacing model and its invariants

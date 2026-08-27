@@ -173,6 +173,35 @@ do bind are in `src/content/pacing.ts` and `docs/PROGRESSION-PACING.md`.
   (a designed, documented safe choice among danger). Level 10 chains six small
   loops, each needing to be closed before the long stitch onward.
 
+## Collection 02 measurements (Prompt 8)
+
+| # | Level | Score | Tier | Solutions | Trap? | Consequence depth |
+|---|---|---|---|---|---|---|
+| 11 | Root Knot | 23 | Easy | 4 | no | 0 |
+| 12 | Twin Roots | 30 | Easy | 6 | no | 0 |
+| 13 | Bark Hollow | 39 | Moderate | 1 | yes | 5 |
+| 14 | Deep Taproot | 60 | Tricky | 2 | yes | 4 |
+| 15 | Old Growth | 66 | Tricky | 1 | yes | 5 |
+| 16 | Bramble Fork | 31 | Easy | 6 | no | 0 |
+| 17 | Thicket Path | 64 | Tricky | 2 | yes | 5 |
+| 18 | Twin Thorns | 60 | Tricky | 2 | yes | 4 |
+| 19 | Snared Vine | 64 | Tricky | 2 | yes | 5 |
+| 20 | Knot's End | 80 | Expert | 1 | yes | 8 |
+
+The formula (`planning + risk + length`, `src/game/analyzer.ts`) was applied
+unchanged — no term was added, removed, or reweighted for Collection 02.
+Every measured tier matched its authored `difficulty` label on the level
+that shipped; the one case that did not on a draft (a chapter-4 entry
+scoring higher than its intended chapter-5 capstone) was resolved by
+swapping which level holds the capstone role, not by adjusting the score.
+See `docs/COLLECTION-02-DESIGN.md` for why each level exists and
+`docs/MILESTONE-8-QA.md` for the full investigation.
+
+Knot's End reaches the same peak score (80) and the same maximum consequence
+depth (8) as Master Sampler, Collection 01's capstone — proof the difficulty
+ceiling is a property of the formula and the puzzle, not something that had
+to be re-tuned to let a second collection reach the same heights.
+
 ## Safety and fairness (unchanged, verified)
 
 - No lives, no timers, no ads, no purchases, no streaks — failure is always

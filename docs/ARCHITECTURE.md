@@ -167,3 +167,24 @@ without explicit invocation.
 - Reduced motion commits the same state change with no transform animation.
 - Small-phone, large-phone, large-text, phone-landscape, and tablet-landscape layout rules are pure and unit tested.
 - Android, iOS, and web export checks run before delivery.
+
+## Routing (Prompt 8: multi-collection)
+
+```
+/                    CollectionLibraryScreen — one folio per collection
+/collection/[id]     LevelSelectScreen(collectionId) — that collection's sampler journey
+/level/[id]          GameScreen — gameplay (unchanged route shape)
+/gallery             GalleryScreen — every completed level's front/back artifacts
+/settings            unchanged
+```
+
+`app/collection/[id].tsx` resolves the id through `getCollection` and
+`getCollectionUnlockState` (`src/content/navigation.ts`); an unknown or
+locked collection id redirects to `/` rather than rendering a broken or
+bypassable screen. `LevelSelectScreen` no longer indexes
+`catalog.collections[0]` — it takes `collectionId` as a prop, so adding a
+third collection requires no route or screen change, only a new entry in
+`COLLECTION_SOURCES` (`src/content/catalog.ts`). Unlock and resume logic
+needed no changes at all: `src/progress/model.ts` was already a pure
+function of flat catalog order, so a second collection appended after the
+first unlocks and resumes correctly with zero migration code.

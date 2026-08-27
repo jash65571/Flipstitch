@@ -148,3 +148,20 @@ a new idea, and the chapter validator — not a global line — is what judges i
 Guidance is the one thing that may not reset. It fades across the whole game and
 never strengthens again inside a skill arc; a genuinely new mechanic would need
 a design decision, not a silent exception.
+
+## Prompt 8: the guidance above, confirmed against real content
+
+Collection 02 (Knot & Bramble) is the first collection authored under this
+rule rather than the one it replaced. Its first chapter, Tangled Root, set
+`resetsDifficulty: true` and opened at 23 — well below Master Sampler's 80,
+exactly the "collapse on a global chart, correct on a chapter chart" shape
+this document predicted. `validateCatalogPacing()` passed with zero
+invariant violations across the resulting twenty-level catalog (after one
+mid-authoring role swap; see `docs/MILESTONE-8-QA.md`). Guidance opened back
+at `full` for Root Knot, correctly recognized as *not* a violation of
+"guidance never strengthens" — that rule is scoped to one collection's arc
+(`GUIDANCE_STRENGTHENED` in `src/content/pacing.ts` only compares chapters
+within the same collection), and a second collection is, by design, a fresh
+arc. See `docs/COLLECTION-02-DESIGN.md` for the full ten-level table and
+`docs/PUZZLE-CURRICULUM.md` for the two new Tier 2 concepts this pacing
+shape had to accommodate.

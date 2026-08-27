@@ -153,6 +153,29 @@ The first collection is ten handcrafted Day & Night hoops. It grows one reasonin
 
 Since Prompt 7 those ten hoops are two chapters of one collection: *First Light* (1-5, tutorial, capstone Forked Needle) and *After Dark* (6-10, mastery, capstone Master Sampler). The measured curve is unchanged and still rises the whole way (see `docs/DIFFICULTY-MATRIX.md`) — but that is now a property of *this* collection, not a rule imposed on future content. Chapter pacing rules in `src/content/pacing.ts` govern what comes next. Difficulty comes from path planning. It never comes from timers, lives, hidden rules, or smaller touch targets. The collection gallery shows a mini hoop, a written difficulty, clear lock state, best completion, and one direct Continue action.
 
+### Collection 02 — Knot & Bramble (Prompt 8)
+
+The content-proof milestone: a second full collection, ten more handcrafted
+hoops, proving the Collection → Chapter → Level architecture and the pacing
+validator survive a real expansion rather than only describing the content
+they were built alongside. *Tangled Root* (11-15, tutorial, capstone Old
+Growth) teaches that a return can nest inside another return and that a hub
+can offer different exits depending on which side you arrive from. *Bramble
+Snare* (16-20, mastery, capstone Knot's End) turns those ideas into pressure
+with converging openings and two runners that cannot both go last. See
+`docs/COLLECTION-02-DESIGN.md` for the full level table and rationale, and
+`docs/RESEARCH-MILESTONE-8.md` for the puzzle and UX research behind it.
+
+The player-facing home screen is now a **collection library** — a folio per
+collection, showing progress and (for a locked collection) a single plain
+sentence explaining what unfolds it, never a currency- or star-gated tease.
+Finishing a collection shows a crafted "sampler finished" state, distinct
+from an ordinary level completion, with a path into a **finished-sampler
+gallery**: every completed hoop's front and back shown as two separate,
+larger artifacts (solid front, dashed back — the same non-color distinction
+used throughout), replayable without disturbing best results or relocking
+anything.
+
 ## Non-negotiable rules
 
 - No limited lives.
