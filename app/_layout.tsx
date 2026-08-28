@@ -13,6 +13,7 @@ import * as SystemUI from "expo-system-ui";
 import { useEffect, useState } from "react";
 import { AccessibilityInfo } from "react-native";
 
+import { useReleaseFocusOnNavigate } from "@/a11y/useReleaseFocusOnNavigate";
 import { FeedbackProvider } from "@/feedback/FeedbackProvider";
 import { PlaytestGate } from "@/playtest/PlaytestGate";
 import { PlaytestProvider } from "@/playtest/PlaytestProvider";
@@ -24,6 +25,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
   const [reduceMotion, setReduceMotion] = useState(false);
+  useReleaseFocusOnNavigate();
   const [fontsLoaded, fontError] = useFonts({
     Fraunces_600SemiBold,
     Fraunces_700Bold,

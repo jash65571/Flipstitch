@@ -16,3 +16,27 @@ export const decorativeSvgA11yProps = {
   importantForAccessibility: "no-hide-descendants" as const,
   ...(Platform.OS === "web" ? {} : { accessibilityElementsHidden: true })
 };
+
+/**
+ * Accessibility props for a subtree that must be fully removed from the
+ * accessibility tree *and* from the focus order — a dimmed board sitting
+ * behind a completion card, for example.
+ *
+ * `importantForAccessibility: "no-hide-descendants"` alone is not enough on
+ * web: React Native Web maps it to `aria-hidden`, but the descendants stay
+ * focusable, so if one of them already holds focus Chrome refuses to apply
+ * the attribute and logs "Blocked aria-hidden on an element because its
+ * descendant retained focus". `inert` is the attribute the WAI-ARIA spec
+ * points to for exactly this case: it hides the subtree from assistive
+ * technology, removes it from the tab order, and blurs anything inside it
+ * that currently has focus. React Native Web forwards `inert` to the DOM.
+ */
+export function hiddenSubtreeA11yProps(hidden: boolean) {
+  if (Platform.OS === "web") {
+    return { inert: hidden } as const;
+  }
+  return {
+    accessibilityElementsHidden: hidden,
+    importantForAccessibility: hidden ? ("no-hide-descendants" as const) : ("auto" as const)
+  };
+}

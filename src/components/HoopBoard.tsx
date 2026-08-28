@@ -18,7 +18,7 @@ import { holeById, needlePoseFor, projectForSide, projectThroughFabric } from "@
 import { needleAnchorNote, peekThroughStatus, playingStatus } from "@/game/peek";
 import { targetEdges } from "@/game/solver";
 import type { GameState, GuidanceLevel, Level, Side } from "@/game/types";
-import { decorativeSvgA11yProps } from "@/components/decorativeA11y";
+import { decorativeSvgA11yProps, hiddenSubtreeA11yProps } from "@/components/decorativeA11y";
 import { NEEDLE_TIP_RATIO, ThreadedNeedle } from "@/components/ThreadedNeedle";
 import { colors, radius, thread, type } from "@/theme/tokens";
 
@@ -238,7 +238,7 @@ function TouchLayer({
   const sideThread = side === "front" ? thread.front : thread.back;
 
   return (
-    <View accessible={false} importantForAccessibility={dimmed ? "no-hide-descendants" : "auto"} style={StyleSheet.absoluteFill}>
+    <View accessible={false} {...hiddenSubtreeA11yProps(dimmed)} style={StyleSheet.absoluteFill}>
       {level.holes.map((hole) => {
         const point = projectForSide(hole, side, size);
         const isHint = !dimmed && hintNode === hole.id;
@@ -251,8 +251,7 @@ function TouchLayer({
             accessibilityRole="button"
             accessibilityLabel={`Hole ${hole.id.toUpperCase()}, ${stateLabel}`}
             accessibilityHint={isValid && !dimmed ? "Places one stitch and flips the hoop" : undefined}
-            accessibilityElementsHidden={dimmed}
-            importantForAccessibility={dimmed ? "no-hide-descendants" : "auto"}
+            {...hiddenSubtreeA11yProps(dimmed)}
             accessibilityState={{ disabled: interactionDisabled }}
             disabled={interactionDisabled}
             hitSlop={4}
@@ -289,9 +288,12 @@ function SideStatusLabel({ side }: { side: Side }) {
  *  (PEEKING · <side> + "Needle stays on <side>") — the through-cloth
  *  visual now does most of that work, so the copy only needs to name what
  *  the player is looking at. */
-function PeekStatusLabel({ peekSide }: { peekSide: Side }) {
+function PeekStatusLabel({ peekSide, size }: { peekSide: Side; size: number }) {
+  // The clamp (HoopFrame) occupies 0 -> size * 0.081 at the top centre, and
+  // this pill is centred too, so a fixed `top` collides with the hardware at
+  // every board size. Sit just clear of the clamp's lower edge instead.
   return (
-    <View accessible={false} style={styles.peekLabel}>
+    <View accessible={false} style={[styles.peekLabel, { top: size * 0.098 }]}>
       <Text style={styles.peekLabelText}>{peekThroughStatus(peekSide)}</Text>
     </View>
   );
@@ -502,7 +504,7 @@ function HoopBoardView({
       />
       <NeedleLayer level={level} game={game} size={size} reduceMotion={reduceMotion} />
       <SideStatusLabel side={game.activeSide} />
-      {peekSide !== null ? <PeekStatusLabel peekSide={peekSide} /> : null}
+      {peekSide !== null ? <PeekStatusLabel peekSide={peekSide} size={size} /> : null}
     </View>
   );
 }
@@ -568,7 +570,7 @@ const styles = StyleSheet.create({
   },
   peekLabel: {
     position: "absolute",
-    top: 10,
+    // `top` is supplied per-render from the board size; see PeekStatusLabel.
     alignSelf: "center",
     paddingHorizontal: 12,
     paddingVertical: 6,
