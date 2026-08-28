@@ -19,3 +19,6 @@ expo-env.d.ts
 
 # real external playtest bundles and observer records — never committed
 /playtests/
+
+# local scratch: rehearsal bundles, observer scratch files
+/tmp/
