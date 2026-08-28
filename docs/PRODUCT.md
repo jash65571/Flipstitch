@@ -287,4 +287,9 @@ anything.
   topology duplicate check since Milestone 8.1 (`docs/COLLECTION-02-DESIGN.md`).
 - A temporary inspection state (Peek) must never be visually or
   semantically confusable with a real, committed game-state change
-  (`docs/PREVIEW-INTERACTION.md`).
+  (`docs/PREVIEW-INTERACTION.md`, current model in `docs/NEEDLE-INTERACTION.md`).
+- The interface must never make the player interpret controls to understand
+  what happened — the needle's tip is always exactly on the current hole,
+  and Through-Cloth Peek always uses the hoop's exact bounds, so "where is
+  my needle" and "am I looking or playing" are answerable by looking, not
+  reasoning (Milestone 10, `docs/NEEDLE-INTERACTION.md`).

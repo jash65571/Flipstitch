@@ -132,8 +132,16 @@ Wordmark stitch mark and the completion seal. Rules:
 ## 8. Motion
 
 - Flip is a physical scale-x swap + settle spring (`GameScreen.animateSwap`).
-- **Reduced motion** (system): flips commit instantly; completion appears without
-  animation; the trap alert is static. Never gate meaning on motion.
+- **The needle** (Milestone 10) plays its own, independent motion on top of
+  the flip: it advances across the current cloth toward the destination
+  hole, pierces at the flip's trough, then emerges through the new side.
+  See `docs/NEEDLE-INTERACTION.md` for the exact timeline. This is a
+  separate motion concept from the board flip, not a sub-effect of it — the
+  two happen to land in the same moment, but neither drives the other.
+- **Reduced motion** (system): flips commit instantly; the needle snaps
+  straight to its correct tip with no advance/emerge phases; completion
+  appears without animation; the trap alert is static. Never gate meaning
+  on motion.
 
 ## 9. Non-negotiables
 
@@ -172,7 +180,19 @@ a cosmetic one — see `docs/PREVIEW-INTERACTION.md` for the fix.
 The design rule going forward: **only a real stitch turns the hoop.**
 Anything that lets the player look at information without committing a
 stitch (Peek today; any future equivalent) must use a visibly different
-grammar — a layered, muted, read-only panel, never the hoop-flip transform,
-never the hoop-flip sound. `PLAYING · <side>` is a permanent fixture of the
-hoop, stitched into the wood, never covered or replaced by a temporary
-state.
+grammar — never the hoop-flip transform, never the hoop-flip sound.
+`PLAYING · <side>` is a permanent fixture of the hoop, stitched into the
+wood, never covered or replaced by a temporary state.
+
+**Milestone 10 update:** the "visibly different grammar" changed shape but
+not intent. Milestone 8.1's layered panel was itself a second, smaller,
+offset circle — technically not the hoop-flip transform, but it read as a
+*second hoop* in practice, which is its own kind of confusion. Milestone 10
+replaced it with **Through-Cloth Peek**: the exact same hoop, the exact
+same cloth bounds, no second frame at all — the opposite side's pattern
+appears to be seen *through* the current fabric (a lightbox metaphor), with
+completed reverse stitches read strongly and the real needle staying
+visible throughout. The rule this section exists to protect — a real
+stitch is the only thing that turns the hoop or plays the hoop-flip sound —
+is unchanged; see `docs/NEEDLE-INTERACTION.md` for the current
+implementation and `docs/PREVIEW-INTERACTION.md` for the superseded one.

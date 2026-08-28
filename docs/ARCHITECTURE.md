@@ -250,7 +250,8 @@ from a clean environment and are unaffected.
 
 - Fonts load from local package assets through `expo-font`; no network request is required.
 - The side swap locks board input until its midpoint and settle animation finish.
-- Reduced motion commits the same state change with no transform animation.
+- The needle's own advance/pierce/emerge motion (Milestone 10, `HoopBoard.tsx#NeedleLayer`) runs independently of that lock/transform — it reacts to `game` prop changes, not to `GameScreen`'s `inputLocked`/`animating` state, but lands inside the same window in practice since both are triggered by the same commit.
+- Reduced motion commits the same state change with no transform animation, and the needle snaps directly to its correct tip with no advance/emerge phases.
 - Small-phone, large-phone, large-text, phone-landscape, and tablet-landscape layout rules are pure and unit tested.
 - Android, iOS, and web export checks run before delivery.
 
@@ -299,17 +300,42 @@ No hosting provider is chosen yet. Whichever one is picked (Prompt 9+),
 confirm its static-hosting config supports SPA fallback/rewrites before
 relying on shareable collection/level links.
 
-## Peek state model (added Milestone 8.1)
+## Peek state model (added Milestone 8.1, visual layer rebuilt Milestone 10)
 
 `src/game/peek.ts` holds the entire inspection state machine as pure
 functions over `Side | null` — it has no dependency on `GameState`
 (`src/game/types.ts`) and cannot read or mutate it. `GameScreen.tsx` holds
 `peekSide` as a `useState` sibling to `game`, never derived from it and
 never folded into it (Milestone 8's bug was exactly that folding —
-`visibleSide = previewSide ?? game.activeSide`). `HoopBoard.tsx` renders two
-independent layers (`PlayLayer`, always `game.activeSide`; `PeekLayer`, only
-when peeking) instead of one side-swappable layer. See
-`docs/PREVIEW-INTERACTION.md` for the full interaction design.
+`visibleSide = previewSide ?? game.activeSide`). This part is unchanged by
+Milestone 10.
+
+What changed is how `HoopBoard.tsx` renders it. Instead of a `PlayLayer` +
+a smaller, corner-offset `PeekLayer` panel (Milestone 8.1), the board is
+now four layers (`HoopFrame`, `TensionRing`, `PatternLayer`, `TouchLayer`)
+plus a `PeekOverlay` that draws inside the *exact same bounds* as
+everything else, and a `NeedleLayer` that stays visible above it. Peeked
+holes are positioned with `projectThroughFabric` (`src/game/boardGeometry.ts`),
+which is deliberately identical to the live layer's own `projectForSide`
+for the side being viewed — so every hole lines up pixel-for-pixel, proven
+in `boardGeometry.test.ts` rather than asserted by eye. See
+`docs/NEEDLE-INTERACTION.md` for the full current design and
+`docs/PREVIEW-INTERACTION.md` for the superseded Milestone 8.1 panel,
+kept as history.
+
+## Needle geometry (added Milestone 10)
+
+`src/game/boardGeometry.ts` is the single source of truth for where a hole
+or the needle lands on screen — `projectForSide`, `projectThroughFabric`,
+`needleTipFor`, `needlePoseFor`. It replaces a `pointFor` helper that used
+to live inline in `HoopBoard.tsx`, duplicated once per layer at different
+`size` arguments; that duplication is exactly how the two layers drifted
+out of alignment before this milestone. The needle itself is a standalone
+component, `src/components/ThreadedNeedle.tsx`, rendered as its own small
+SVG canvas positioned by an `Animated.View` wrapper rather than drawn
+inline inside the board's main `<Svg>` — this is what makes independent
+travel/emergence animation and reduced-motion snapping tractable without
+touching the board's own flip transform. See `docs/NEEDLE-INTERACTION.md`.
 
 ## Topology fingerprinting (added Milestone 8.1)
 

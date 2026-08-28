@@ -6,6 +6,31 @@ FlipStitch is a calm mobile puzzle game for Android and iOS. A player completes 
 
 ## Current milestone
 
+The **needle and Through-Cloth Peek** milestone (Prompt 10) is complete on
+`main`. Prompt 9 proved FlipStitch could measure real players; before
+recruiting them, this milestone fixes a real clarity problem the interface
+still had — the needle looked randomly placed next to a hole with no
+visible connection to how it got there, and Peek looked like a second,
+misaligned hoop floating over the first.
+
+- The needle is now a real, tested component (`src/components/ThreadedNeedle.tsx`)
+  whose tip is a hard geometric invariant: always exactly on the current
+  hole, proven per production level in `src/game/boardGeometry.test.ts`,
+  not just "visually close."
+- A stitch now visibly explains itself: the needle advances across the
+  cloth toward the destination, pierces, and emerges on the new side —
+  instead of teleporting between renders.
+- **Through-Cloth Peek** replaces the old floating mini-hoop: the opposite
+  side's pattern appears through the exact same hoop, at exactly the same
+  hole positions, with completed reverse stitches shown strongly and the
+  real needle staying visible throughout. See `docs/NEEDLE-INTERACTION.md`.
+- Puzzle rules, level IDs, topology, and difficulty are unchanged. Prompt
+  9's playtest infrastructure (build mode, consent, bundles, cohort
+  analyzer) is unchanged and still rehearses clean in CI.
+- New docs: `docs/RESEARCH-MILESTONE-10.md`, `docs/NEEDLE-INTERACTION.md`,
+  `docs/MILESTONE-10-QA.md`. `docs/PREVIEW-INTERACTION.md` is kept as
+  history of the superseded Milestone 8.1 design.
+
 The **external playtest infrastructure** milestone (Prompt 9) is complete on
 `main`. FlipStitch has been tested only by the people building it; this
 milestone builds the way to change that, and deliberately changes nothing about
@@ -67,7 +92,7 @@ The game itself is unchanged:
 
 - Tap a valid hole to place one stitch.
 - The active side changes after every stitch.
-- Peek at the reverse without moving the needle.
+- Peek through the fabric at the reverse without moving the needle.
 - Undo freely or ask a staged hint (concept → region → exact).
 - Finish every marked stitch on both sides.
 - Work through **20 validated handcrafted hoops** across **four chapters** in **two collections** — Day & Night and Knot & Bramble.

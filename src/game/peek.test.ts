@@ -10,6 +10,7 @@ import {
   peekEnterAnnouncement,
   peekExitAnnouncement,
   peekingStatus,
+  peekThroughStatus,
   playingStatus,
   togglePeek
 } from "./peek.ts";
@@ -72,10 +73,18 @@ test("no contradictory FRONT/BACK copy: playingStatus side never equals peekingS
   }
 });
 
-test("control label names the action: Peek <other side> when idle, Return to <active side> when peeking", () => {
+test("control label names the action: Peek <other side> when idle, Close Peek when active", () => {
   assert.equal(peekControlLabel("back", null), "Peek Front");
   assert.equal(peekControlLabel("front", null), "Peek Back");
-  assert.equal(peekControlLabel("back", "front"), "Return to Back");
+  // Through-Cloth Peek never moves the player anywhere ("Return to <side>"
+  // implied a real trip back), so the active label is action-only.
+  assert.equal(peekControlLabel("back", "front"), "Close Peek");
+  assert.equal(peekControlLabel("front", "back"), "Close Peek");
+});
+
+test("peekThroughStatus names the side being seen through the cloth", () => {
+  assert.equal(peekThroughStatus("back"), "SEEING BACK THROUGH CLOTH");
+  assert.equal(peekThroughStatus("front"), "SEEING FRONT THROUGH CLOTH");
 });
 
 test("needle anchor note always names the true active side, never the peeked side", () => {

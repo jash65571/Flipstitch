@@ -557,6 +557,7 @@ export function GameScreen({
                 guidance={guidance}
                 peekSide={peekSide}
                 interactionDisabled={animating || peekSide !== null || game.complete}
+                reduceMotion={reduceMotion}
                 onNodePress={handleNodePress}
               />
             </Animated.View>

@@ -1,5 +1,21 @@
-# Preview → Peek — Interaction Design (Milestone 8.1)
+# Preview → Peek — Interaction Design (Milestone 8.1, superseded by Milestone 10)
 
+> **Milestone 10 addendum (current model):** everything below this banner
+> describes the Milestone 8.1 **floating panel** design — a smaller,
+> corner-offset second circle (`size * 0.86`, `top: 7%`, `left: 13%`) with
+> no needle and no completed-stitch detail. It was technically safe (state
+> separation held, tests passed, no contradictory copy) but it **failed the
+> desired mental model**: live screenshots showed a second hoop that didn't
+> line up with the first, and the panel needed three stacked labels to
+> explain itself. Milestone 10 replaced it with **Through-Cloth Peek** —
+> the exact same hoop bounds, holes aligned pixel-for-pixel with the live
+> layer, completed reverse stitches rendered strongly, and the real needle
+> staying visible throughout. See `docs/NEEDLE-INTERACTION.md` for the
+> current model and geometry rule, and `docs/RESEARCH-MILESTONE-10.md` for
+> the research behind the change. This document is kept as history — the
+> *problem* it solved (state separation, no contradictory PLAYING/PEEKING
+> copy) is still solved the same way; only the *visual* changed.
+>
 > **Milestone 8.2 addendum:** everything below describes the Milestone 8.1
 > design and fix. Milestone 8.2's job was to verify it against the running
 > app rather than trust the design doc — live screenshots of the corrected
@@ -101,15 +117,22 @@ While peeking:
 - the peek layer's single accessible node announces
   `"PEEKING · <side>. Read only. Needle stays on <activeSide>."`
 
-## Control label
+## Control label (Milestone 8.1 values — see note)
 
 The toolbar control (`Icon name="peek"`, formerly `"preview"`) is dynamic
 and always names the exact next action:
 
-| State | Label |
+| State | Label (Milestone 8.1) |
 |---|---|
 | Not peeking | `Peek Front` / `Peek Back` (names the side you'd see) |
 | Peeking | `Return to Front` / `Return to Back` (names the side you'd return to) |
+
+> **Superseded in Milestone 10:** the active-state label is now `Close
+> Peek`, not `Return to <side>`. Through-Cloth Peek never moves the player
+> anywhere — the hoop never turns — so "return to" implied a trip that
+> never happened. The idle-state label (`Peek Front` / `Peek Back`) is
+> unchanged. See `src/game/peek.ts#peekControlLabel` and
+> `docs/NEEDLE-INTERACTION.md`.
 
 ## Feedback
 
@@ -120,7 +143,7 @@ clearly as "the real game state did not just change" than any new sound
 would, and the prompt's instruction not to add audio "just because we can"
 weighed against it.
 
-## Accessibility announcements
+## Accessibility announcements (Milestone 8.1 wording — see note)
 
 `say()` (via `AccessibilityInfo.announceForAccessibility`) fires on every
 Peek transition:
@@ -129,6 +152,14 @@ Peek transition:
   Front. Your needle stays on Back. Peek is read-only."*
 - exit: `peekExitAnnouncement(activeSide)` — e.g. *"Returned to Back.
   Continue stitching."*
+
+> **Superseded in Milestone 10:** the copy now matches the through-cloth
+> model — enter: *"Viewing Front through the fabric. Needle remains on
+> Back. Read-only."*; exit: *"Peek closed. Continue stitching on Back."*
+> The mechanism (fires on every transition, names both sides, states
+> read-only) is unchanged; only the wording moved from "peeking at"/
+> "returned to" (implying travel) to "viewing through"/"closed" (implying
+> inspection only). See `src/game/peek.ts`.
 
 ## Reduced motion
 
